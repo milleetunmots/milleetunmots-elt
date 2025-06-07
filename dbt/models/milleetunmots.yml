@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+
+  - name: mots_app
+    database: MOTS_DL
+    tables:
+      - name: admin_users
+      - name: child_supports
+      - name: children
+      - name: children_sources
+      - name: groups
+      - name: parents
+      - name: sources
+      - name: versions
