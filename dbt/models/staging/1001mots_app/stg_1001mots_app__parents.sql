@@ -1,6 +1,6 @@
 with source as (
     select *
-    from {{ source('1001mots_app', 'parents') }}
+    from {{ source('mots_app', 'parents') }}
 )
 
 select
@@ -9,7 +9,7 @@ select
     first_name::string as first_name,
     last_name::string as last_name,
     email::string as email,
-    phone::string as phone,
+    phone_number::string as phone_number,
     phone_number_national::string as phone_number_national,
     address::string as address,
     postal_code::string as postal_code,

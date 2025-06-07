@@ -1,6 +1,6 @@
 with source as (
     select *
-    from {{ source('1001mots_app', 'children_sources') }}
+    from {{ source('mots_app', 'children_sources') }}
 )
 
 select

@@ -1,6 +1,6 @@
 with source as (
     select *
-    from {{ source('1001mots_app', 'versions') }}
+    from {{ source('mots_app', 'versions') }}
 )
 
 select
@@ -8,7 +8,7 @@ select
     item_type::string as item_type,
     item_id::string as item_id,
     event::string as event,
-    name::string as name,
+    --name::string as name,
     to_date(
             nullif(created_at::string, '')
     ) as date_created,

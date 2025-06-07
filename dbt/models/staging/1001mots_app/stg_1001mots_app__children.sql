@@ -1,18 +1,18 @@
 with source as (
     select *
-    from {{ source('1001mots_app', 'children') }}
+    from {{ source('mots_app', 'children') }}
 )
 
 select
     id::string as id,
-    parent_id1::string as parent1_id,
-    parent_id2::string as parent2_id,
+    parent1_id::string as parent1_id,
+    parent2_id::string as parent2_id,
     child_support_id::string as child_support_id,
     group_id::string as group_id,
     first_name::string as first_name,
     last_name::string as last_name,
     to_date(
-            nullif(birth_date::string, '')
+            nullif(birthdate::string, '')
     ) as date_birth,
     to_date(
             nullif(created_at::string, '')
