@@ -1,0 +1,14 @@
+# example profiles.yml file
+milleetunmots:
+  target: prod
+  outputs:
+    prod:
+      type: snowflake
+      account: APHZCUS-WH41832
+      user: DBT_PROD_USER
+      role: DBT_PROD_ROLE
+      password: 6TX4A#Vk4iNfe9g
+      database: MOTS_DW
+      warehouse: COMPUTE_WH
+      schema: staging
+      threads: 200
