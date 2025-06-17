@@ -4,7 +4,7 @@ with source as (
 )
 
 select
-    id::string as admin_user_id,
+    id::string as supporter_id,
     email::string as email,
     name::string as name,
     to_date(

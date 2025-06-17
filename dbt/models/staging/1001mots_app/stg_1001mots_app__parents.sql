@@ -12,7 +12,7 @@ select
     phone_number::string as phone_number,
     phone_number_national::string as phone_number_national,
     address::string as address,
-    postal_code::string as postal_code,
+    regexp_replace(postal_code, '[^0-9]', '')::string as postal_code,
     city_name::string as city_name,
     to_date(
             nullif(created_at::string, '')
