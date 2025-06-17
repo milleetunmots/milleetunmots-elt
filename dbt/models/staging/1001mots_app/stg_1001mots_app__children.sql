@@ -20,6 +20,9 @@ select
     to_date(
             nullif(updated_at::string, '')
     ) as date_updated,
+    to_date(
+            nullif(discarded_at::string, '')
+    ) as date_discarded,
     gender::string as gender,
     should_contact_parent1::boolean as should_contact_parent1,
     should_contact_parent2::boolean as should_contact_parent2,

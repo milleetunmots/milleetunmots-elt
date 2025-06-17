@@ -13,3 +13,8 @@ sources:
       - name: parents
       - name: sources
       - name: versions
+
+  - name: seed
+    database: MOTS_DW
+    tables:
+      - name: benchmark_mecene

@@ -1,26 +1,29 @@
+name: dbt_project
+profile: milleetunmots
+version: 1.0.0
+config-version: 2
 
-# Name your project! Project names should contain only lowercase characters
-# and underscores. A good package name should reflect your organization's
-# name or the intended use of these models
-name: 'milleetunmots'
-version: '1.0.0'
-
-# This setting configures which "profile" dbt uses for this project.
-profile: 'milleetunmots'
-
-# These configurations specify where dbt should look for different types of files.
-# The `model-paths` config, for example, states that models in this project can be
-# found in the "models/" directory. You probably won't need to change these!
-model-paths: ["models"]
-analysis-paths: ["analyses"]
-test-paths: ["tests"]
-seed-paths: ["seeds"]
-macro-paths: ["macros"]
+docs-paths: ["docs"]
 snapshot-paths: ["snapshots"]
 
-clean-targets:         # directories to be removed by `dbt clean`
-  - "target"
-  - "dbt_packages"
+quoting:
+  # https://docs.getdbt.com/reference/project-configs/quoting
+  database: false
+  schema: false
+  identifier: false
+
+vars:
+  daily_company_start_date: to_date('2022/01/01', 'yyyy/mm/dd') # Company daily table start date
+
+tests:
+  +store_failures: true
+
+snapshots:
+  +target_schema: snapshots
+
+seeds:
+  +delimiter: ";"
+  +schema: seed
 
 
 # Configuring models
@@ -33,7 +36,7 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   +transient: false
   materialized: table
-  milleetunmots:
+  dbt_project:
     analytics:
       schema: analytics
     dim:
@@ -42,3 +45,7 @@ models:
       schema: fact
     staging:
       schema: staging
+    seed:
+      schema: seed
+    tests:
+      schema: tests
