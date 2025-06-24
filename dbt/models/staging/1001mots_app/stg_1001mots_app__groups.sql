@@ -4,7 +4,7 @@ with source as (
 )
 
 select
-    id::string as group_id,
+    id::integer as group_id,
     name::string as group_name,
     to_date(
             nullif(created_at::string, '')

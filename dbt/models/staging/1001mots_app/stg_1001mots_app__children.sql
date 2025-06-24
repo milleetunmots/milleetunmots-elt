@@ -4,11 +4,11 @@ with source as (
 )
 
 select
-    id::string as child_id,
-    parent1_id::string as parent1_id,
-    parent2_id::string as parent2_id,
-    child_support_id::string as family_id,
-    group_id::string as group_id,
+    id::integer as child_id,
+    parent1_id::integer as parent1_id,
+    parent2_id::integer as parent2_id,
+    child_support_id::integer as family_id,
+    group_id::integer as group_id,
     first_name::string as first_name,
     last_name::string as last_name,
     to_date(

@@ -4,7 +4,7 @@ with source as (
 )
 
 select
-    id::string as parent_id,
+    id::integer as parent_id,
     gender::string as gender,
     first_name::string as first_name,
     last_name::string as last_name,

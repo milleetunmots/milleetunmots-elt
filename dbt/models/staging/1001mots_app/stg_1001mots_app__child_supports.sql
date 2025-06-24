@@ -5,5 +5,37 @@ with source as (
 
 select
     id::string as family_id,
-    supporter_id::string as supporter_id
+    supporter_id::string as supporter_id,
+    -- Call 0 fields
+    call0_duration::integer as call0_duration,
+    nullif(call0_status::string, '') as call0_status,
+    nullif(call0_review::string, '') as call0_review,
+    call0_goals_sms::string as call0_goals_sms,
+    nullif(call0_goals::string, '') as call0_goals,
+    -- Call 1 fields
+    call1_duration::integer as call1_duration,
+    nullif(call1_status::string, '') as call1_status,
+    nullif(call1_review::string, '') as call1_review,
+    call1_goals_sms::string as call1_goals_sms,
+    nullif(call1_goals::string, '') as call1_goals,
+    call1_previous_goals_follow_up::string as call1_previous_goals_follow_up,
+    -- Call 2 fields
+    call2_duration::integer as call2_duration,
+    nullif(call2_status::string, '') as call2_status,
+    nullif(call2_review::string, '') as call2_review,
+    call2_goals_sms::string as call2_goals_sms,
+    nullif(call2_goals::string, '') as call2_goals,
+    call2_previous_goals_follow_up::string as call2_previous_goals_follow_up,
+    -- Call 3 fields
+    call3_duration::integer as call3_duration,
+    nullif(call3_status::string, '') as call3_status,
+    nullif(call3_review::string, '') as call3_review,
+    call3_goals_sms::string as call3_goals_sms,
+    nullif(call3_goals::string, '') as call3_goals,
+    call3_previous_goals_follow_up::string as call3_previous_goals_follow_up,
+    -- Call 4 fields
+    call4_previous_goals_follow_up::string as call4_previous_goals_follow_up,
+    -- Timestamps
+    to_date(nullif(created_at::string, '')) as date_created,
+    to_date(nullif(updated_at::string, '')) as date_updated
 from source

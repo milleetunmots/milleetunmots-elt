@@ -18,3 +18,4 @@ sources:
     database: MOTS_DW
     tables:
       - name: benchmark_mecene
+      - name: suivi_activite
