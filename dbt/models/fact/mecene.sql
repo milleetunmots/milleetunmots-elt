@@ -59,7 +59,7 @@ source as (
 change_status as (
     select 
         item_id,
-        parse_json(object_changes):"date_updated"[0] as date_updated,
+        parse_json(object_changes):"updated_at"[0] as date_updated,
         parse_json(object_changes):"group_status"[1] as group_status
     from children c 
     left join versions v
@@ -134,9 +134,6 @@ select
     -- accompagnement indicators
     
     -- accompagnement indicators N-2
-    cl.date_started as cl_date_started,
-    cl.ended_at_perso as cl_ended_at_perso,
-    cl.date_created as cl_date_created,
     {{ accompagnement_annee_n_moins_2('cl.date_started', 'cl.ended_at_perso', 'cl.date_created', 'cl.child_status') }} as accompagnement_annee_n_moins_2,
     
     -- accompagnement indicators N-1

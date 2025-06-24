@@ -31,8 +31,8 @@ end
 {# Calcule si un enfant a été accompagné durant année N-1 #}
 
 case 
-    when year({{ ended_at_perso }}) >= year(current_date - interval '1 year') 
-        and year({{ date_started }}) <= year(current_date - interval '1 year') then 1
+    when {{ ended_at_perso }} >= date_trunc('year', current_date - interval '1 year') 
+        and {{ date_started }} <= date_trunc('year', current_date - interval '1 year') then 1
     when year({{ date_started }}) = year(current_date - interval '1 year') then 1
     when year({{ date_created }}) = year(current_date - interval '1 year') 
         and year({{ date_started }}) = year(current_date) then 1
@@ -46,8 +46,8 @@ end
 {# Calcule le type d'accompagnement de l'enfant durant année N-1 #}
 
 case 
-    when year({{ ended_at_perso }}) >= year(current_date - interval '1 year') 
-        and year({{ date_started }}) <= year(current_date - interval '1 year') 
+    when {{ ended_at_perso }} >= date_trunc('year', current_date - interval '1 year') 
+        and {{ date_started }} <= date_trunc('year', current_date - interval '1 year') 
         then 'Enfant accompagne 1 janvier'
     when year({{ date_started }}) = year(current_date - interval '1 year') 
         then 'Enfant ayant commence son accompagnement dans annee'
@@ -65,8 +65,8 @@ end
 {# Calcule si un enfant a été accompagné durant année N #}
 
 case 
-    when year({{ ended_at_perso }}) >= year(current_date) 
-        and year({{ date_started }}) <= year(current_date) then 1
+    when {{ ended_at_perso }} >= date_trunc('year', current_date) 
+        and {{ date_started }} <= date_trunc('year', current_date) then 1
     when year({{ date_started }}) = year(current_date) then 1
     when year({{ date_created }}) = year(current_date) 
         and year({{ date_started }}) = year(current_date + interval '1 year') then 1
@@ -80,8 +80,8 @@ end
 {# Calcule le type d'accompagnement de l'enfant durant année N #}
 
 case 
-    when year({{ ended_at_perso }}) >= year(current_date) 
-        and year({{ date_started }}) <= year(current_date) 
+    when {{ ended_at_perso }} >= date_trunc('year', current_date) 
+        and {{ date_started }} <= date_trunc('year', current_date) 
         then 'Enfant accompagne 1 janvier'
     when year({{ date_started }}) = year(current_date) 
         then 'Enfant ayant commence son accompagnement dans annee'
@@ -99,8 +99,8 @@ end
 {# Calcule si un enfant a été accompagné durant année N+1 #}
 
 case 
-    when year({{ ended_at_perso }}) >= year(current_date + interval '1 year') 
-        and year({{ date_started }}) <= year(current_date + interval '1 year') then 1
+    when {{ ended_at_perso }} >= date_trunc('year', current_date + interval '1 year') 
+        and {{ date_started }} <= date_trunc('year', current_date + interval '1 year') then 1
     when year({{ date_started }}) = year(current_date + interval '1 year') then 1
     when year({{ date_created }}) = year(current_date + interval '1 year') then 1
     else 0 

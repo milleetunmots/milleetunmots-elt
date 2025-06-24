@@ -15,13 +15,13 @@ select
     --to_date(date_of_registration) as date_of_registration,
     child_age_in_month::string as child_age_in_month,
     accompagnement_annee_n_moins_2::integer as accompagnement_annee_n_moins_2,
-    -- accompagnement_annee_n_moins_1::integer as accompagnement_annee_n_moins_1,
-    -- accompagnement_annee_n_moins_1_decompose::string as accompagnement_annee_n_moins_1_decompose,
-    -- accompagnement_annee_n::integer as accompagnement_annee_n,
-    -- accompagnement_annee_n_decompose::string as accompagnement_annee_n_decompose,
-    -- accompagnement_annee_n_1::integer as accompagnement_annee_n_1,
-    -- accompagnement_annee_n_1_ajuste::integer as accompagnement_annee_n_1_ajuste,
-    -- accompagnement_annee_n_1_ajuste_decompose::float as accompagnement_annee_n_1_ajuste_decompose
+    accompagnement_annee_n_moins_1::integer as accompagnement_annee_n_moins_1,
+    accompagnement_annee_n_moins_1_decompose::string as accompagnement_annee_n_moins_1_decompose,
+    accompagnement_annee_n::integer as accompagnement_annee_n,
+    accompagnement_annee_n_decompose::string as accompagnement_annee_n_decompose,
+    accompagnement_annee_n_1::integer as accompagnement_annee_n_1,
+    accompagnement_annee_n_1_ajuste as accompagnement_annee_n_1_ajuste,
+    accompagnement_annee_n_1_ajuste_decompose::float as accompagnement_annee_n_1_ajuste_decompose
 from {{ source('seed', 'benchmark_mecene') }}
 {% endset %}
 
@@ -40,13 +40,13 @@ select
     --to_date(date_of_registration) as date_of_registration,
     child_age_in_month,
     accompagnement_annee_n_moins_2,
-    -- accompagnement_annee_n_moins_1,
-    -- accompagnement_annee_n_moins_1_decompose,
-    -- accompagnement_annee_n,
-    -- accompagnement_annee_n_decompose,
-    -- accompagnement_annee_n_1,
-    -- accompagnement_annee_n_1_ajuste,
-    -- accompagnement_annee_n_1_ajuste_decompose
+    accompagnement_annee_n_moins_1,
+    accompagnement_annee_n_moins_1_decompose::string as accompagnement_annee_n_moins_1_decompose,
+    accompagnement_annee_n,
+    accompagnement_annee_n_decompose,
+    accompagnement_annee_n_1,
+    accompagnement_annee_n_1_ajuste,
+    accompagnement_annee_n_1_ajuste_decompose
 from {{ ref('mecene') }}
 {% endset %}
 
