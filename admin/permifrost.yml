@@ -1,0 +1,122 @@
+databases:
+  - mots_dl:
+      shared: no
+      owner: stitch_role
+  - mots_dw:
+      shared: no
+      owner: accountadmin
+
+warehouses:
+  - compute_wh:
+      size: x-small
+      owner: accountadmin
+  - ingestion_cluster:
+      size: x-small
+      owner: accountadmin
+  - metabase_cluster:
+      size: x-small
+      owner: accountadmin
+
+roles:
+  - accountadmin:
+      member_of: [useradmin]
+  - useradmin:
+      member_of: [stitch_role, metabase_role, dbt_prod_role]
+
+  - stitch_role:
+      warehouses:
+        - ingestion_cluster
+      owner: useradmin
+      privileges:
+        databases:
+          read:
+            - mots_dl
+          write:
+            - mots_dl
+        schemas:
+          read:
+            - mots_dl.*
+          write:
+            - mots_dl.*
+        tables:
+          read:
+            - mots_dl.*.*
+          write:
+            - mots_dl.*.*
+
+      owns:
+        databases:
+          - mots_dl
+        schemas:
+          - mots_dl.*
+        tables:
+          - mots_dl.*.*
+          
+  - metabase_role:
+      warehouses:
+        - metabase_cluster
+      owner: useradmin
+      privileges:
+        databases:
+          read:
+            - mots_dw
+            - mots_dl
+        schemas:
+          read:
+            - mots_dl.*
+            - mots_dw.*
+        tables:
+          read:
+            - mots_dl.*.*
+            - mots_dw.*.*
+
+  - dbt_prod_role:
+      warehouses:
+        - compute_wh
+      owner: useradmin
+      privileges:
+        databases:
+          read:
+            - mots_dw
+            - mots_dl
+          write:
+            - mots_dw
+            - mots_dl
+        schemas:
+          read:
+            - mots_dw.*
+            - mots_dl.*
+          write:
+            - mots_dw.*
+            - mots_dl.*
+        tables:
+          read:
+            - mots_dw.*.*
+            - mots_dl.*.*
+          write:
+            - mots_dw.*.*
+            - mots_dl.*.*
+      owns:
+        databases:
+          - mots_dw
+        schemas:
+          - mots_dw.*
+        tables:
+          - mots_dw.*.*
+
+users:
+  # stitch_role
+  - stitch_user:
+      owner: useradmin
+      member_of: [stitch_role]
+      can_login: true
+  # metabase_role
+  - metabase_user:
+      owner: useradmin
+      member_of: [metabase_role]
+      can_login: true
+  # dbt_prod_role
+  - dbt_prod_user:
+      owner: useradmin
+      member_of: [dbt_prod_role]
+      can_login: true
