@@ -12,84 +12,84 @@ case
 end
 {% endmacro %}
 
-{% macro accompagnement_annee_n_moins_2(date_started, ended_at_perso, date_created) %}
+{% macro accompagnement_annee_n_moins_2(date_started, ended_at_perso, date_created, child_status) %}
 {# Calcule si un enfant a été accompagné durant année N-2 #}
 
 case 
-    when {{ ended_at_perso }} >= date_trunc('year', current_date - interval '2 year') 
-        and {{ date_started }} <= date_trunc('year', current_date - interval '2 year') then 1
-    when extract(year from {{ date_started }}) = extract(year from current_date - interval '2 year') then 1
-    when extract(year from {{ date_created }}) = extract(year from current_date - interval '2 year') 
-        and (extract(year from {{ date_started }}) = extract(year from current_date - interval '1 year')) then 1
-    when extract(year from {{ date_created }}) = extract(year from current_date - interval '2 year') 
-        and child_status = 'waiting' then 1
+    when year({{ ended_at_perso }}) >= year(current_date - interval '2 year') 
+        and year({{ date_started }}) <= year(current_date - interval '2 year') then 1
+    when year({{ date_started }}) = year(current_date - interval '2 year') then 1
+    when year({{ date_created }}) = year(current_date - interval '2 year') 
+        and year({{ date_started }}) = year(current_date - interval '1 year') then 1
+    when year({{ date_created }}) = year(current_date - interval '2 year') 
+        and {{ child_status }} = 'waiting' then 1
     else 0 
 end 
 {% endmacro %}
 
-{% macro accompagnement_annee_n_moins_1(date_started, ended_at_perso, date_created) %}
+{% macro accompagnement_annee_n_moins_1(date_started, ended_at_perso, date_created, child_status) %}
 {# Calcule si un enfant a été accompagné durant année N-1 #}
 
 case 
-    when {{ ended_at_perso }} >= date_trunc('year', current_date - interval '1 year') 
-        and {{ date_started }} <= date_trunc('year', current_date - interval '1 year') then 1
-    when extract(year from {{ date_started }}) = extract(year from current_date - interval '1 year') then 1
-    when extract(year from {{ date_created }}) = extract(year from current_date - interval '1 year') 
-        and (extract(year from {{ date_started }}) = extract(year from current_date)) then 1
-    when extract(year from {{ date_created }}) = extract(year from current_date - interval '1 year') 
-        and child_status = 'waiting' then 1
+    when year({{ ended_at_perso }}) >= year(current_date - interval '1 year') 
+        and year({{ date_started }}) <= year(current_date - interval '1 year') then 1
+    when year({{ date_started }}) = year(current_date - interval '1 year') then 1
+    when year({{ date_created }}) = year(current_date - interval '1 year') 
+        and year({{ date_started }}) = year(current_date) then 1
+    when year({{ date_created }}) = year(current_date - interval '1 year') 
+        and {{ child_status }} = 'waiting' then 1
     else 0 
 end
 {% endmacro %}
 
-{% macro accompagnement_annee_n_moins_1_decompose(date_started, ended_at_perso, date_created) %}
+{% macro accompagnement_annee_n_moins_1_decompose(date_started, ended_at_perso, date_created, child_status) %}
 {# Calcule le type d'accompagnement de l'enfant durant année N-1 #}
 
 case 
-    when {{ ended_at_perso }} >= date_trunc('year', current_date - interval '1 year') 
-        and {{ date_started }} <= date_trunc('year', current_date - interval '1 year') 
+    when year({{ ended_at_perso }}) >= year(current_date - interval '1 year') 
+        and year({{ date_started }}) <= year(current_date - interval '1 year') 
         then 'Enfant accompagne 1 janvier'
-    when extract(year from {{ date_started }}) = extract(year from current_date - interval '1 year') 
+    when year({{ date_started }}) = year(current_date - interval '1 year') 
         then 'Enfant ayant commence son accompagnement dans annee'
-    when extract(year from {{ date_created }}) = extract(year from current_date - interval '1 year') 
-        and (extract(year from {{ date_started }}) = extract(year from current_date)) 
+    when year({{ date_created }}) = year(current_date - interval '1 year') 
+        and year({{ date_started }}) = year(current_date) 
         then 'Enfant inscrits dont accompagnement pas commence'
-    when extract(year from {{ date_created }}) = extract(year from current_date - interval '1 year') 
-        and child_status = 'waiting' 
+    when year({{ date_created }}) = year(current_date - interval '1 year') 
+        and {{ child_status }} = 'waiting' 
         then 'Enfant inscrits dont accompagnement pas commence et pas planifié'
     else null 
 end
 {% endmacro %}
 
-{% macro accompagnement_annee_n(date_started, ended_at_perso, date_created) %}
+{% macro accompagnement_annee_n(date_started, ended_at_perso, date_created, child_status) %}
 {# Calcule si un enfant a été accompagné durant année N #}
 
 case 
-    when {{ ended_at_perso }} >= date_trunc('year', current_date) 
-        and {{ date_started }} <= date_trunc('year', current_date) then 1
-    when extract(year from {{ date_started }}) = extract(year from current_date) then 1
-    when extract(year from {{ date_created }}) = extract(year from current_date) 
-        and (extract(year from {{ date_started }}) = extract(year from current_date + interval '1 year')) then 1
-    when extract(year from {{ date_created }}) = extract(year from current_date) 
-        and child_status = 'waiting' then 1
+    when year({{ ended_at_perso }}) >= year(current_date) 
+        and year({{ date_started }}) <= year(current_date) then 1
+    when year({{ date_started }}) = year(current_date) then 1
+    when year({{ date_created }}) = year(current_date) 
+        and year({{ date_started }}) = year(current_date + interval '1 year') then 1
+    when year({{ date_created }}) = year(current_date) 
+        and {{ child_status }} = 'waiting' then 1
     else 0 
 end
 {% endmacro %}
 
-{% macro accompagnement_annee_n_decompose(date_started, ended_at_perso, date_created) %}
+{% macro accompagnement_annee_n_decompose(date_started, ended_at_perso, date_created, child_status) %}
 {# Calcule le type d'accompagnement de l'enfant durant année N #}
 
 case 
-    when {{ ended_at_perso }} >= date_trunc('year', current_date) 
-        and {{ date_started }} <= date_trunc('year', current_date) 
+    when year({{ ended_at_perso }}) >= year(current_date) 
+        and year({{ date_started }}) <= year(current_date) 
         then 'Enfant accompagne 1 janvier'
-    when extract(year from {{ date_started }}) = extract(year from current_date) 
+    when year({{ date_started }}) = year(current_date) 
         then 'Enfant ayant commence son accompagnement dans annee'
-    when extract(year from {{ date_created }}) = extract(year from current_date) 
-        and (extract(year from {{ date_started }}) = extract(year from current_date + interval '1 year')) 
+    when year({{ date_created }}) = year(current_date) 
+        and year({{ date_started }}) = year(current_date + interval '1 year') 
         then 'Enfant inscrits dont accompagnement pas commence'
-    when extract(year from {{ date_created }}) = extract(year from current_date) 
-        and child_status = 'waiting' 
+    when year({{ date_created }}) = year(current_date) 
+        and {{ child_status }} = 'waiting'    
         then 'Enfant inscrits dont accompagnement pas commence et pas planifié'
     else null 
 end 
@@ -99,10 +99,10 @@ end
 {# Calcule si un enfant a été accompagné durant année N+1 #}
 
 case 
-    when {{ ended_at_perso }} >= date_trunc('year', current_date + interval '1 year') 
-        and {{ date_started }} <= date_trunc('year', current_date + interval '1 year') then 1
-    when extract(year from {{ date_started }}) = extract(year from current_date + interval '1 year') then 1
-    when extract(year from {{ date_created }}) = extract(year from current_date + interval '1 year') then 1
+    when year({{ ended_at_perso }}) >= year(current_date + interval '1 year') 
+        and year({{ date_started }}) <= year(current_date + interval '1 year') then 1
+    when year({{ date_started }}) = year(current_date + interval '1 year') then 1
+    when year({{ date_created }}) = year(current_date + interval '1 year') then 1
     else 0 
 end 
 {% endmacro %}
