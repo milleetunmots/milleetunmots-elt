@@ -13,6 +13,8 @@ sources:
       - name: parents
       - name: sources
       - name: versions
+      - name: taggings
+      - name: tags
 
   - name: seed
     database: MOTS_DW
