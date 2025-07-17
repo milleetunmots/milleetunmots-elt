@@ -1,0 +1,11 @@
+dbt-core==1.9.1
+dbt-snowflake==1.9.2
+pre-commit==3.6.0
+permifrost==0.15.4
+scipy==1.11.0
+pandas
+gspread
+oauth2client
+requests
+dagster
+dagster-dbt
