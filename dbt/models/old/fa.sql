@@ -106,7 +106,8 @@ SELECT DISTINCT
     g.name,
     cpf.postal_code AS parent1_postal_code,
     s.channel AS source_channel,
-    array_to_string(ARRAY(SELECT DISTINCT UNNEST(cpf.tag_name::varchar[]) ORDER BY 1), ',') as tag_name,
+    -- A remettre
+    --array_to_string(ARRAY(SELECT DISTINCT UNNEST(cpf.tag_name::varchar[]) ORDER BY 1), ',') as tag_name,
     CASE 
         WHEN cs.call0_status = 'OK' 
         THEN 1 ELSE NULL END AS is_call0_ok,

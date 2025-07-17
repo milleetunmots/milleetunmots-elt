@@ -81,11 +81,11 @@ parent AS (
 change_status AS (
     SELECT 
         item_id,
-        object_changes->'updated_at'->>0 AS updated_at,
-        object_changes->'group_status'->>1 AS group_status
+        parse_json(object_changes):"updated_at"[0]::string AS updated_at,
+        parse_json(object_changes):"group_status"[1]::string AS group_status
     FROM children AS cs 
     LEFT JOIN versions AS v ON v.item_id = cs.id
-    WHERE item_type = 'Child' AND object_changes->'group_status'->>1 IN ('stopped', 'disengaged')
+    WHERE item_type = 'Child' AND parse_json(object_changes):"group_status"[1]::string IN ('stopped', 'disengaged')
 ),
 
 child_data AS (
@@ -150,72 +150,72 @@ SELECT
         WHEN cl.age_at_registration > 30 THEN 'F/ >30 mois'
         ELSE 'G/ NSP' END AS child_age_in_month, 
     CASE 
-        WHEN ended_at_perso >= date_trunc('year', now() - interval '2 year') AND started_at <= date_trunc('year', now() - interval '2 year') THEN 1 -- Nombre d'enfants accompagnes au premier janvier
+        WHEN ended_at_perso >= date_trunc('year', current_date - interval '2 year') AND started_at <= date_trunc('year', current_date - interval '2 year') THEN 1 -- Nombre d'enfants accompagnes au premier janvier
         WHEN extract(year from started_at) = extract(year from current_date - interval '2 year') THEN 1 -- Nombre d'enfants ayant commencé un accompagnement à l'année N
         WHEN extract(year from cl.created_at) = extract(year from current_date - interval '2 year') AND (extract(year from started_at) = extract(year from current_date - interval '1 year')) THEN 1 -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé
         WHEN extract(year from cl.created_at) = extract(year from current_date - interval '2 year') /*AND started_at IS NULL*/ AND child_status = 'waiting' THEN 1 -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé et n'est pas encore planifié 
         ELSE 0 END AS accompagnement_annee_n_moins_2, 
     CASE 
-        WHEN ended_at_perso >= date_trunc('year', now() - interval '1 year') AND started_at <= date_trunc('year', now() - interval '1 year') THEN 1 -- Nombre d'enfants accompagnes au premier janvier
+        WHEN ended_at_perso >= date_trunc('year', current_date - interval '1 year') AND started_at <= date_trunc('year', current_date - interval '1 year') THEN 1 -- Nombre d'enfants accompagnes au premier janvier
         WHEN extract(year from started_at) = extract(year from current_date - interval '1 year') THEN 1 -- Nombre d'enfants ayant commencé un accompagnement à l'année N
         WHEN extract(year from cl.created_at) = extract(year from current_date - interval '1 year') AND (extract(year from started_at) = extract(year from current_date)) THEN 1 -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé
         WHEN extract(year from cl.created_at) = extract(year from current_date - interval '1 year') /*AND started_at IS NULL*/ AND child_status = 'waiting' THEN 1  -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé et n'est pas encore planifié
         ELSE 0 END AS accompagnement_annee_n_moins_1,
     CASE 
-        WHEN ended_at_perso >= date_trunc('year', now() - interval '1 year') AND started_at <= date_trunc('year', now() - interval '1 year') THEN 'Enfant accompagne 1 janvier' 
+        WHEN ended_at_perso >= date_trunc('year', current_date - interval '1 year') AND started_at <= date_trunc('year', current_date - interval '1 year') THEN 'Enfant accompagne 1 janvier' 
         WHEN extract(year from started_at) = extract(year from current_date - interval '1 year') THEN 'Enfant ayant commence son accompagnement dans annee'
         WHEN extract(year from cl.created_at) = extract(year from current_date - interval '1 year') AND (extract(year from started_at) = extract(year from current_date)) THEN 'Enfant inscrits dont accompagnement pas commence'
         WHEN extract(year from cl.created_at) = extract(year from current_date - interval '1 year') /*AND started_at IS NULL*/ AND child_status = 'waiting' THEN 'Enfant inscrits dont accompagnement pas commence et pas planifié'
         ELSE null END AS accompagnement_annee_n_moins_1_decompose,
     CASE 
-        WHEN ended_at_perso >= date_trunc('year', now()) AND started_at <= date_trunc('year', now()) THEN 1 -- Nombre d'enfants accompagnes au premier janvier
+        WHEN ended_at_perso >= date_trunc('year', current_date) AND started_at <= date_trunc('year', current_date) THEN 1 -- Nombre d'enfants accompagnes au premier janvier
         WHEN extract(year from started_at) = extract(year from current_date) THEN 1 -- Nombre d'enfants ayant commencé un accompagnement à l'année N
         WHEN extract(year from cl.created_at) = extract(year from current_date) AND (extract(year from started_at) = extract(year from current_date + interval '1 year')) THEN 1 -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé
         WHEN extract(year from cl.created_at) = extract(year from current_date) /*AND started_at IS NULL*/ AND child_status = 'waiting' THEN 1 -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé et n'est pas encore planifié
         ELSE 0 END AS accompagnement_annee_n,
     CASE 
-        WHEN ended_at_perso >= date_trunc('year', now()) AND started_at <= date_trunc('year', now()) THEN 'Enfant accompagne 1 janvier' -- Nombre d'enfants accompagnes au premier janvier
+        WHEN ended_at_perso >= date_trunc('year', current_date) AND started_at <= date_trunc('year', current_date) THEN 'Enfant accompagne 1 janvier' -- Nombre d'enfants accompagnes au premier janvier
         WHEN extract(year from started_at) = extract(year from current_date) THEN 'Enfant ayant commence son accompagnement dans annee' -- Nombre d'enfants ayant commencé un accompagnement à l'année N
         WHEN extract(year from cl.created_at) = extract(year from current_date) AND (extract(year from started_at) = extract(year from current_date + interval '1 year')) THEN 'Enfant inscrits dont accompagnement pas commence' -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé
         WHEN extract(year from cl.created_at) = extract(year from current_date) /*AND started_at IS NULL*/ AND child_status = 'waiting' THEN 'Enfant inscrits dont accompagnement pas commence et pas planifié' -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé et n'est pas encore planifié
         ELSE null END AS accompagnement_annee_n_decompose,      
     CASE 
-        WHEN ended_at_perso >= date_trunc('year', now() + interval '1 year') AND started_at <= date_trunc('year', now() + interval '1 year') THEN 1 -- Nombre d'enfants accompagnes au premier janvier
+        WHEN ended_at_perso >= date_trunc('year', current_date + interval '1 year') AND started_at <= date_trunc('year', current_date + interval '1 year') THEN 1 -- Nombre d'enfants accompagnes au premier janvier
         WHEN extract(year from started_at) = extract(year from current_date + interval '1 year') THEN 1 -- Nombre d'enfants ayant commencé un accompagnement à l'année N
         WHEN extract(year from cl.created_at) = extract(year from current_date + interval '1 year') THEN 1 -- Nombre d'enfants inscrits à l'année N dont l'accompagnement n'a pas encore commencé
         ELSE 0 END AS accompagnement_annee_n_1,
     CASE 
         -- cohorte a moins de 3 mois à la fin de l'année en cours
-        WHEN (DATE_PART('year', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) < 3
+        WHEN (DATE_PART('year', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) < 3
         THEN 1
         -- cohorte a moins de 6 mois aujourd'hui, aura plus de 6 mois et moins de 12 mois à la fin de l'année en cours
-        WHEN (DATE_PART('year', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) BETWEEN 6 AND 11
+        WHEN (DATE_PART('year', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) BETWEEN 6 AND 11
         AND  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month',CURRENT_DATE) - DATE_PART('month', started_at)) < 6 
         THEN 0.8
         -- cohorte a moins de 6 mois aujourd'hui, aura plus de 3 mois et moins de 12 mois à la fin de l'année en cours 
-        WHEN (DATE_PART('year', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) BETWEEN 3 AND 11
+        WHEN (DATE_PART('year', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) BETWEEN 3 AND 11
         AND  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month',CURRENT_DATE) - DATE_PART('month', started_at)) < 6 
         THEN 0.6
         -- cohorte a plus de 6 mois aujourd'hui et la date de fin perso est supérieure à celle de la fin de l'année en cours
         WHEN (DATE_PART('year', CURRENT_DATE) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month',CURRENT_DATE) - DATE_PART('month', started_at)) >= 6
-        AND (DATE_PART('year', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('year',  ended_at_perso)) * 12 + (DATE_PART('month', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('month', ended_at_perso)) <= 0
+        AND (DATE_PART('year', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('year',  ended_at_perso)) * 12 + (DATE_PART('month', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('month', ended_at_perso)) <= 0
         THEN 1 
         ELSE 0 END AS accompagnement_annee_n_1_ajuste,
     CASE 
         -- cohorte a moins de 3 mois à la fin de l'année en cours
-        WHEN (DATE_PART('year', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) < 3
+        WHEN (DATE_PART('year', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) < 3
         THEN 1
         -- cohorte a moins de 6 mois aujourd'hui, aura plus de 6 mois et moins de 12 mois à la fin de l'année en cours
-        WHEN (DATE_PART('year', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) BETWEEN 6 AND 11
+        WHEN (DATE_PART('year', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) BETWEEN 6 AND 11
         AND  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month',CURRENT_DATE) - DATE_PART('month', started_at)) < 6 
         THEN 0.8
         -- cohorte a moins de 6 mois aujourd'hui, aura plus de 3 mois et moins de 12 mois à la fin de l'année en cours 
-        WHEN (DATE_PART('year', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) BETWEEN 3 AND 11
+        WHEN (DATE_PART('year', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('month', started_at)) BETWEEN 3 AND 11
         AND  (DATE_PART('year', CURRENT_DATE) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month',CURRENT_DATE) - DATE_PART('month', started_at)) < 6 
         THEN 0.6
         -- cohorte a plus de 6 mois aujourd'hui et la date de fin perso est supérieure à celle de la fin de l'année en cours
         WHEN (DATE_PART('year', CURRENT_DATE) - DATE_PART('year',  started_at)) * 12 + (DATE_PART('month',CURRENT_DATE) - DATE_PART('month', started_at)) >= 6
-        AND (DATE_PART('year', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('year',  ended_at_perso)) * 12 + (DATE_PART('month', (date_trunc('year', now() + interval '1 year') - interval '1 day')) - DATE_PART('month', ended_at_perso)) <= 0
+        AND (DATE_PART('year', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('year',  ended_at_perso)) * 12 + (DATE_PART('month', (date_trunc('year', current_date + interval '1 year') - interval '1 day')) - DATE_PART('month', ended_at_perso)) <= 0
         THEN 1 
         ELSE 0 END AS accompagnement_annee_n_1_ajuste_decompose
 

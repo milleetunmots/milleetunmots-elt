@@ -1,6 +1,6 @@
 with source as (
     select *
-    from {{ source('mots_app', 'sources') }}
+    from {{ source('mots_app', 'support_modules') }}
 )
 
 select
@@ -20,7 +20,8 @@ select
     ) as date_start,
     for_bilingual::boolean as for_bilingual,
     theme::string as theme,
-    age_range::string as age_range,
+    -- A reprendre
+    age_ranges::string as age_range,
     level::string as level,
     book_id::string as book_id
 from source

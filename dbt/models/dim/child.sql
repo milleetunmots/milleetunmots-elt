@@ -9,6 +9,7 @@ select
     parent2_id,
     family_id,
     group_id,
+    date_group_end,
     first_name,
     last_name,
     date_birth,

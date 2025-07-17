@@ -168,7 +168,7 @@ tags_a AS (
 list_of_tags AS (
     SELECT 
         taggings.taggable_id AS family_id,
-        string_agg(tags.name, ',') as tag_list
+        LISTAGG(tags.name, ',') within group(order by tags.name) as tag_list
     FROM taggings 
     INNER JOIN tags AS tags ON tags.id = taggings.tag_id
     WHERE taggings.taggable_type = 'ChildSupport'
@@ -195,95 +195,150 @@ source AS (
 
 -- Requête principale permettant de rassembler toutes les infos
 SELECT DISTINCT
-    cpf.family_id,
-    yc.child_id,
-    f.created_at AS support_creation_date,
-    yc.gender,
-    yc.birthdate,
-    yc.ages AS age_today_in_months,
-    CASE 
-        WHEN (DATE_PART('year', g.started_at) - DATE_PART('year',  yc.birthdate)) * 12 + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 12 THEN '0-11'
-        WHEN (DATE_PART('year', g.started_at) - DATE_PART('year',  yc.birthdate)) * 12 + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 24 THEN '12-23'
-        WHEN (DATE_PART('year', g.started_at) - DATE_PART('year',  yc.birthdate)) * 12 + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 37 THEN '24-36'
-        ELSE NULL END AS age_range_at_start_of_cohort,
-    yc.group_status,
-    yc.group_end end_of_active_status,
-    yc.number_of_children,
-    CASE WHEN t1.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_desengage_T2,
-    CASE WHEN t2.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_estime_desengage_T2,
-    CASE WHEN t3.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_desengage_T1,
-    CASE WHEN t4.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_estime_desengage_T1_conserve,
-    CASE WHEN t5.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_estime_desengage_T1,
-    CASE WHEN t6.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_estime_desengage_T2_conserve,
-    CASE 
-        WHEN t4.tag_name IS NOT NULL THEN 'Estimé désengagé t1 conservé' 
-        WHEN t3.tag_name IS NOT NULL THEN 'Désengagé t1'
-        ELSE 'Conservé t1' END AS engagement_state_t1,
-    CASE
-        WHEN t6.tag_name IS NOT NULL THEN 'Estimé désengagé t2 conservé'
-        WHEN t1.tag_name IS NOT NULL THEN 'Désengagé t2'
-        ELSE 'Conservé t2' END AS engagement_state_t2,
-    p1.city_name AS parent1_city_name,
-    so.name AS source_name,
-    so.channel AS source_channel,
-    so.department AS source_department,
-    p1.postal_code AS parent1_postal_code,
-    SUBSTR(p1.postal_code, 1, 2) AS departement,
-    p1.degree AS parent1_degree,
-    g.name AS cohort_name,
-    s.email AS supporter_name, 
-    f.call0_status AS call_0_status,
-    f.call1_status,
-    f.call2_status,
-    f.call3_status,
-    f.call1_previous_goals_follow_up,
-    f.call2_previous_goals_follow_up,
-    f.call4_previous_goals_follow_up,
-    f.is_call0_goals,
-    f.is_call1_goals,
-    f.is_call2_goals,
-    f.is_call3_goals,
-    f.is_call0_status,
-    f.is_call1_status,
-    f.is_call2_status,
-    f.is_call3_status,
-    f.is_call0_status + f.is_call1_status + f.is_call2_status + f.is_call3_status AS number_of_calls,
-    f.call0_duration AS call_0_duration,
-    f.call1_duration,
-    f.call2_duration,
-    f.call3_duration,
-    CASE WHEN f.call0_review = '0_very_satisfied' THEN 'très satisfaisant' WHEN f.call0_review = '1_rather_satisfied' THEN 'satisfaisant' WHEN f.call0_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  WHEN f.call0_review = '3_very_dissatisfied' THEN 'très insatisfaisant' WHEN f.call0_review = '' THEN 'vide' ELSE f.call0_review END AS review_call0,
-    CASE WHEN f.call1_review = '0_very_satisfied' THEN 'très satisfaisant' WHEN f.call1_review = '1_rather_satisfied' THEN 'satisfaisant' WHEN f.call1_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  WHEN f.call1_review = '3_very_dissatisfied' THEN 'très insatisfaisant' WHEN f.call0_review = '' THEN 'vide' ELSE f.call1_review END AS review_call1,
-    CASE WHEN f.call2_review = '0_very_satisfied' THEN 'très satisfaisant' WHEN f.call2_review = '1_rather_satisfied' THEN 'satisfaisant' WHEN f.call2_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  WHEN f.call2_review = '3_very_dissatisfied' THEN 'très insatisfaisant' WHEN f.call0_review = '' THEN 'vide' ELSE f.call2_review END AS review_call2,
-    CASE WHEN f.call3_review = '0_very_satisfied' THEN 'très satisfaisant' WHEN f.call3_review = '1_rather_satisfied' THEN 'satisfaisant' WHEN f.call3_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  WHEN f.call3_review = '3_very_dissatisfied' THEN 'très insatisfaisant' WHEN f.call0_review = '' THEN 'vide' ELSE f.call3_review END AS review_call3,
-    CASE WHEN f.call0_attempt = 'first_call_attempt' THEN '1ère tentative' WHEN f.call0_attempt = 'second_call_attempt' THEN '2ème tentative' WHEN f.call0_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative' ELSE f.call0_attempt END AS nb_of_tries_call0,
-    CASE WHEN f.call1_attempt = 'first_call_attempt' THEN '1ère tentative' WHEN f.call1_attempt = 'second_call_attempt' THEN '2ème tentative' WHEN f.call1_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative' ELSE f.call1_attempt END AS nb_of_tries_call1,
-    CASE WHEN f.call2_attempt = 'first_call_attempt' THEN '1ère tentative' WHEN f.call2_attempt = 'second_call_attempt' THEN '2ème tentative' WHEN f.call2_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative' ELSE f.call2_attempt END AS nb_of_tries_call2,
-    CASE WHEN f.call3_attempt = 'first_call_attempt' THEN '1ère tentative' WHEN f.call3_attempt = 'second_call_attempt' THEN '2ème tentative' WHEN f.call3_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative' ELSE f.call3_attempt END AS nb_of_tries_call3,
-    COALESCE(p1.mid_term_rate, p2.mid_term_rate) AS mid_term_rate,
-    COALESCE(p1.mid_term_reaction, p2.mid_term_reaction) AS mid_term_reaction,
-    m2.name AS module2_name,
-    m3.name AS module3_name,
-    m4.name AS module4_name,
-    m5.name AS module5_name,
-    m6.name AS module6_name, 
-    CASE 
-        WHEN is_bilingual = '0_yes' THEN 'Oui'
-        WHEN is_bilingual = '1_no' THEN 'Non'
-        ELSE null END AS is_bilingue,
-    COALESCE(p1.mid_term_rate, p2.mid_term_rate) AS mid_term_rate,
-    (DATE_PART('year', g.started_at) - DATE_PART('year', f.created_at)) * 12 + (DATE_PART('month', g.started_at) - DATE_PART('month', f.created_at)) AS registration_delay,
-    (DATE_PART('year', f.created_at) - DATE_PART('year', birthdate)) * 12 + (DATE_PART('month', f.created_at) - DATE_PART('month', birthdate)) AS age_at_registration,
-    lot.tag_list,
-    g.is_excluded_from_analytics,
-    (f.call0_status = 'OK' or f.call1_status = 'OK') as is_call_0_1_status_OK
+        concat(cpf.family_id, '_', yc.child_id) as ind,
+        cpf.family_id,
+        yc.child_id,
+        -- To remove to_date
+        to_date(f.created_at) AS support_creation_date,
+        yc.gender,
+        -- To remove to_date
+        to_date(yc.birthdate) AS birthdate,
+        yc.ages AS age_today_in_months,
+        CASE 
+            WHEN (DATE_PART('year', g.started_at) - DATE_PART('year', yc.birthdate)) * 12 + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 12 THEN '0-11'
+            WHEN (DATE_PART('year', g.started_at) - DATE_PART('year', yc.birthdate)) * 12 + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 24 THEN '12-23'
+            WHEN (DATE_PART('year', g.started_at) - DATE_PART('year', yc.birthdate)) * 12 + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 37 THEN '24-36'
+            ELSE NULL
+        END AS age_range_at_start_of_cohort,
+        yc.group_status,
+        -- To remove to_date
+        to_date(yc.group_end) AS end_of_active_status,
+        yc.number_of_children,
+        CASE WHEN t1.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_desengage_T2,
+        CASE WHEN t2.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_estime_desengage_T2,
+        CASE WHEN t3.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_desengage_T1,
+        CASE WHEN t4.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_estime_desengage_T1_conserve,
+        CASE WHEN t5.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_estime_desengage_T1,
+        CASE WHEN t6.tag_name IS NOT NULL THEN 1 ELSE 0 END AS is_estime_desengage_T2_conserve,
+        CASE 
+            WHEN t4.tag_name IS NOT NULL THEN 'Estimé désengagé t1 conservé' 
+            WHEN t3.tag_name IS NOT NULL THEN 'Désengagé t1'
+            ELSE 'Conservé t1'
+        END AS engagement_state_t1,
+        CASE
+            WHEN t6.tag_name IS NOT NULL THEN 'Estimé désengagé t2 conservé'
+            WHEN t1.tag_name IS NOT NULL THEN 'Désengagé t2'
+            ELSE 'Conservé t2'
+        END AS engagement_state_t2,
+        p1.city_name AS parent1_city_name,
+        so.name AS source_name,
+        so.channel AS source_channel,
+        so.department AS source_department,
+        p1.postal_code AS parent1_postal_code,
+        SUBSTR(p1.postal_code, 1, 2) AS departement,
+        p1.degree AS parent1_degree,
+        g.name AS cohort_name,
+        s.email AS supporter_name, 
+        f.call0_status AS call_0_status,
+        f.call1_status,
+        f.call2_status,
+        f.call3_status,
+        f.call1_previous_goals_follow_up,
+        f.call2_previous_goals_follow_up,
+        f.call4_previous_goals_follow_up,
+        f.is_call0_goals,
+        f.is_call1_goals,
+        f.is_call2_goals,
+        f.is_call3_goals,
+        f.is_call0_status,
+        f.is_call1_status,
+        f.is_call2_status,
+        f.is_call3_status,
+        f.is_call0_status + f.is_call1_status + f.is_call2_status + f.is_call3_status AS number_of_calls,
+        f.call0_duration AS call_0_duration,
+        f.call1_duration,
+        f.call2_duration,
+        f.call3_duration,
+        CASE 
+            WHEN f.call0_review = '0_very_satisfied' THEN 'très satisfaisant'
+            WHEN f.call0_review = '1_rather_satisfied' THEN 'satisfaisant'
+            WHEN f.call0_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'
+            WHEN f.call0_review = '3_very_dissatisfied' THEN 'très insatisfaisant'
+            WHEN f.call0_review = '' THEN 'vide'
+            ELSE f.call0_review
+        END AS review_call0,
+        CASE 
+            WHEN f.call1_review = '0_very_satisfied' THEN 'très satisfaisant'
+            WHEN f.call1_review = '1_rather_satisfied' THEN 'satisfaisant'
+            WHEN f.call1_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'
+            WHEN f.call1_review = '3_very_dissatisfied' THEN 'très insatisfaisant'
+            WHEN f.call0_review = '' THEN 'vide'
+            ELSE f.call1_review
+        END AS review_call1,
+        CASE 
+            WHEN f.call2_review = '0_very_satisfied' THEN 'très satisfaisant'
+            WHEN f.call2_review = '1_rather_satisfied' THEN 'satisfaisant'
+            WHEN f.call2_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'
+            WHEN f.call2_review = '3_very_dissatisfied' THEN 'très insatisfaisant'
+            WHEN f.call0_review = '' THEN 'vide'
+            ELSE f.call2_review
+        END AS review_call2,
+        CASE 
+            WHEN f.call3_review = '0_very_satisfied' THEN 'très satisfaisant'
+            WHEN f.call3_review = '1_rather_satisfied' THEN 'satisfaisant'
+            WHEN f.call3_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'
+            WHEN f.call3_review = '3_very_dissatisfied' THEN 'très insatisfaisant'
+            WHEN f.call0_review = '' THEN 'vide'
+            ELSE f.call3_review
+        END AS review_call3,
+        CASE 
+            WHEN f.call0_attempt = 'first_call_attempt' THEN '1ère tentative'
+            WHEN f.call0_attempt = 'second_call_attempt' THEN '2ème tentative'
+            WHEN f.call0_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative'
+            ELSE f.call0_attempt
+        END AS nb_of_tries_call0,
+        CASE 
+            WHEN f.call1_attempt = 'first_call_attempt' THEN '1ère tentative'
+            WHEN f.call1_attempt = 'second_call_attempt' THEN '2ème tentative'
+            WHEN f.call1_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative'
+            ELSE f.call1_attempt
+        END AS nb_of_tries_call1,
+        CASE 
+            WHEN f.call2_attempt = 'first_call_attempt' THEN '1ère tentative'
+            WHEN f.call2_attempt = 'second_call_attempt' THEN '2ème tentative'
+            WHEN f.call2_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative'
+            ELSE f.call2_attempt
+        END AS nb_of_tries_call2,
+        CASE 
+            WHEN f.call3_attempt = 'first_call_attempt' THEN '1ère tentative'
+            WHEN f.call3_attempt = 'second_call_attempt' THEN '2ème tentative'
+            WHEN f.call3_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative'
+            ELSE f.call3_attempt
+        END AS nb_of_tries_call3,
+        COALESCE(p1.mid_term_rate, p2.mid_term_rate) AS mid_term_rate,
+        COALESCE(p1.mid_term_reaction, p2.mid_term_reaction) AS mid_term_reaction,
+        m2.name AS module2_name,
+        m3.name AS module3_name,
+        m4.name AS module4_name,
+        m5.name AS module5_name,
+        m6.name AS module6_name, 
+        CASE 
+            WHEN is_bilingual = '0_yes' THEN 'Oui'
+            WHEN is_bilingual = '1_no' THEN 'Non'
+            ELSE null
+        END AS is_bilingue,
+        (DATE_PART('year', g.started_at) - DATE_PART('year', f.created_at)) * 12 + (DATE_PART('month', g.started_at) - DATE_PART('month', f.created_at)) AS registration_delay,
+        (DATE_PART('year', f.created_at) - DATE_PART('year', birthdate)) * 12 + (DATE_PART('month', f.created_at) - DATE_PART('month', birthdate)) AS age_at_registration,
+        lot.tag_list,
+        g.is_excluded_from_analytics,
+        (f.call0_status = 'OK' OR f.call1_status = 'OK') AS is_call_0_1_status_OK
 FROM child_parent_family AS cpf
 INNER JOIN youngest_child AS yc ON yc.child_id = cpf.child_id
 INNER JOIN parent AS p1 ON p1.parent_id = cpf.parent1_id 
 LEFT JOIN parent AS p2 ON p2.parent_id = cpf.parent2_id
 LEFT JOIN source AS so ON so.child_id = yc.child_id
 INNER JOIN families AS f ON cpf.family_id = f.family_id
-LEFT JOIN groups AS g ON g.group_id = yc.group_id
+LEFT JOIN groups AS g ON g.id = yc.group_id
 LEFT JOIN supporter AS s ON cpf.supporter_id = s.id
 LEFT JOIN tags_a AS t1 ON t1.family_id = cpf.family_id AND t1.tag_id = 876 
 LEFT JOIN tags_a AS t2 ON t2.family_id = cpf.family_id AND t2.tag_id = 874 

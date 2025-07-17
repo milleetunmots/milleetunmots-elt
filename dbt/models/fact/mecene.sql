@@ -114,6 +114,8 @@ child_lead as (
 )
 
 select 
+    cpf.family_id,
+    cl.group_name as cohort_name,
     -- filters
     s.channel as source_channel,
     s.name as source_name,

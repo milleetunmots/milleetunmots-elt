@@ -4,11 +4,14 @@ with source as (
 )
 
 select
-    id::integer as child_id,
-    parent1_id::integer as parent1_id,
-    parent2_id::integer as parent2_id,
-    child_support_id::integer as family_id,
-    group_id::integer as group_id,
+    id::string as child_id,
+    parent1_id::string as parent1_id,
+    parent2_id::string as parent2_id,
+    child_support_id::string as family_id,
+    group_id::string as group_id,
+    to_date(
+            nullif(group_end::string, '')
+    ) as date_group_end,
     first_name::string as first_name,
     last_name::string as last_name,
     to_date(
@@ -21,7 +24,8 @@ select
             nullif(updated_at::string, '')
     ) as date_updated,
     to_date(
-            nullif(discarded_at::string, '')
+            --nullif(discarded_at::string, '')
+            discarded_at
     ) as date_discarded,
     gender::string as gender,
     should_contact_parent1::boolean as should_contact_parent1,

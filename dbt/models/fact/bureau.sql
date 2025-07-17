@@ -97,7 +97,7 @@ child AS (
             WHEN dsg.second_group_status = 'disengaged' THEN 'disengaged' 
             WHEN dsg.second_group_status = 'stopped' AND dsg.disengaged_at < g.date_ended_clean THEN '2'
             WHEN dsg.second_group_status = 'stopped' AND dsg.disengaged_at > g.date_ended_clean THEN NULL
-            WHEN dsg.second_group_status = 'stopped' AND DATE_PART('day', dsg.disengaged_at::timestamp - g.date_started::timestamp) < 180 THEN '3'
+            WHEN dsg.second_group_status = 'stopped' AND DATEDIFF('day', g.date_started, dsg.disengaged_at) < 180 THEN '3'
             ELSE NULL 
         END AS is_child_disengaged,
         
@@ -111,10 +111,10 @@ child AS (
         SELECT
             item_type,
             item_id,
-            object_changes->'group_status'->>1 AS second_group_status,
-            date(object_changes->'updated_at'->>0) AS disengaged_at
+            parse_json(object_changes):"group_status"[1]::string AS second_group_status,
+            date(parse_json(object_changes):"updated_at"[0]::string) AS disengaged_at
         FROM versions
-        WHERE object_changes->'group_status'->>1 IN ('disengaged', 'stopped')
+        WHERE parse_json(object_changes):"group_status"[1]::string IN ('disengaged', 'stopped')
     ) AS dsg ON dsg.item_id = ch.child_id::string
 
     GROUP BY 1,2,3,4,5,7,8,9

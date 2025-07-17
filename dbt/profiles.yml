@@ -7,13 +7,16 @@ milleetunmots:
       account: APHZCUS-WH41832
       user: DBT_PROD_USER
       role: DBT_PROD_ROLE
-      password: 6TX4A#Vk4iNfe9g
+      password: dk8d6sR4DE_9uj
       database: MOTS_DW
       warehouse: COMPUTE_WH
-      schema: public
+      schema: FACT
       threads: 200
       # Paramètres de connexion supplémentaires pour la robustesse
       client_session_keep_alive: true
       connection_timeout: 60
       retry_on_database_errors: true
       retry_allowed: 3
+
+#eyJraWQiOiIzNTczMzI2ODkyNTIzNjIiLCJhbGciOiJFUzI1NiJ9.eyJwIjoiMjEyOTg3NzI6MjEyOTg2OTIiLCJpc3MiOiJTRjoxMDQ3IiwiZXhwIjoxNzU1MzMzMjEyfQ.V9fBEHsdCJ1w_-tbYWYfDdEx4YmpepfzOtNhlZQZL3iTnBUNaaQgS_ZZTIcEFFmAPmM-7yIyS3CYw4fyWtMJrQ
+#dk8d6sR4DE_9uj
