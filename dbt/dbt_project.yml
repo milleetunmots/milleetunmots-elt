@@ -49,3 +49,5 @@ models:
       schema: seed
     tests:
       schema: tests
+    old:
+      schema: old

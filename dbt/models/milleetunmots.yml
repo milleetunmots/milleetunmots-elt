@@ -13,6 +13,7 @@ sources:
       - name: parents
       - name: sources
       - name: versions
+      - name: support_modules
       - name: taggings
       - name: tags
 

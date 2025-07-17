@@ -6,15 +6,15 @@ WITH child_supports AS (
 ),
 
 dim_child AS (
-    SELECT * FROM {{ ref('dim_child') }}
+    SELECT * FROM {{ ref('child') }}
 ),
 
 dim_parent AS (
-    SELECT * FROM {{ ref('dim_parent') }}
+    SELECT * FROM {{ ref('parent') }}
 ),
 
 dim_groups AS (
-    SELECT * FROM {{ ref('dim_groups') }}
+    SELECT * FROM {{ ref('groups') }}
 ),
 
 versions AS (

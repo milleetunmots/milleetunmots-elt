@@ -10,5 +10,10 @@ milleetunmots:
       password: 6TX4A#Vk4iNfe9g
       database: MOTS_DW
       warehouse: COMPUTE_WH
-      schema: staging
+      schema: public
       threads: 200
+      # Paramètres de connexion supplémentaires pour la robustesse
+      client_session_keep_alive: true
+      connection_timeout: 60
+      retry_on_database_errors: true
+      retry_allowed: 3

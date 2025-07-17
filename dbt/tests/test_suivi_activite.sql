@@ -49,7 +49,7 @@ select
     duo_call0_ok_1_ko,
     duo_call0_ok_1_ok,
     is_disabled
-from {{ ref('suivi_qualite') }}
+from {{ ref('suivi_activite') }}
 {% endset %}
 
 
