@@ -9,14 +9,14 @@ select
     -- Call 0 fields
     call0_attempt::string as call0_attempt,
     call0_duration::integer as call0_duration,
-    call0_status::string as call0_status,
+    trim(call0_status::string) as call0_status,
     call0_review::string as call0_review,
     call0_goals_sms::string as call0_goals_sms,
     nullif(call0_goals::string, '') as call0_goals,
     -- Call 1 fields
     call1_attempt::string as call1_attempt,
     call1_duration::integer as call1_duration,
-    call1_status::string as call1_status,
+    trim(call1_status::string) as call1_status,
     call1_review::string as call1_review,
     call1_goals_sms::string as call1_goals_sms,
     nullif(call1_goals::string, '') as call1_goals,
@@ -24,7 +24,7 @@ select
     -- Call 2 fields
     call2_attempt::string as call2_attempt,
     call2_duration::integer as call2_duration,
-    call2_status::string as call2_status,
+    trim(call2_status::string) as call2_status,
     call2_review::string as call2_review,
     call2_goals_sms::string as call2_goals_sms,
     nullif(call2_goals::string, '') as call2_goals,
@@ -32,7 +32,7 @@ select
     -- Call 3 fields
     call3_attempt::string as call3_attempt,
     call3_duration::integer as call3_duration,
-    call3_status::string as call3_status,
+    trim(call3_status::string) as call3_status,
     call3_review::string as call3_review,
     call3_goals_sms::string as call3_goals_sms,
     nullif(call3_goals::string, '') as call3_goals,

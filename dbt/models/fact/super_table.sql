@@ -270,12 +270,12 @@ SELECT distinct
     CASE 
         WHEN t3.tag_id IS NOT NULL THEN 'Désengagé t1'
         WHEN t4.tag_id IS NOT NULL THEN 'Estime désengagé t1 conservé'
-        WHEN t5.tag_id IS NOT NULL THEN 'Estime désengagé t1'
+        --WHEN t5.tag_id IS NOT NULL THEN 'Estime désengagé t1'
         ELSE 'Conservé t1'
     END AS engagement_state_t1,
     CASE 
         WHEN t1.tag_id IS NOT NULL THEN 'Désengagé t2'
-        WHEN t2.tag_id IS NOT NULL THEN 'Estime désengagé t2'
+        --WHEN t2.tag_id IS NOT NULL THEN 'Estime désengagé t2'
         WHEN t6.tag_id IS NOT NULL THEN 'Estime désengagé t2 conservé'
         ELSE 'Conservé t2'
     END AS engagement_state_t2,

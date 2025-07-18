@@ -5,7 +5,7 @@ with g as (
 
 select
     group_id,
-    group_name,
+    trim(group_name) as group_name,
     date_created,
     date_started,
     date_ended,

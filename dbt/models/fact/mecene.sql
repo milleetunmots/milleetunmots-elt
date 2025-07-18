@@ -113,7 +113,8 @@ child_lead as (
         or is_excluded_from_analytics is null
 )
 
-select 
+select
+    concat(cpf.family_id, '_', cpf.child_id) as ind,
     cpf.family_id,
     cl.group_name as cohort_name,
     -- filters

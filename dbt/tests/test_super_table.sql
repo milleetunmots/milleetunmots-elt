@@ -1,4 +1,4 @@
-{% set old_relation = ref('st') -%}
+{% set old_relation = ref('seed_st') -%}
 
 {% set dbt_relation = ref('super_table') %}
 
