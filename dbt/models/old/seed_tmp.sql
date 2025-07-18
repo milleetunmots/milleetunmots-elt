@@ -1,6 +1,6 @@
 with source as (
     select *
-    from {{ ref('seed_mecene') }}
+    from {{ source('seed', 'seed_mecene') }}
 )
 
 select
