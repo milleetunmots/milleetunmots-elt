@@ -54,7 +54,7 @@ youngest_child AS (
         ch.group_id,
         ch.gender, 
         ch.date_birth as birthdate,
-        (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', ch.date_birth)) * 12 + (DATE_PART('month', CURRENT_DATE) - DATE_PART('month', ch.date_birth)) AS ages,
+        ch.ages,
         ch.registration_source,
         ch.group_status,
         --Idee ?
@@ -95,38 +95,17 @@ families AS (
         call1_status,
         call2_status,
         call3_status,
-        CASE 
-            WHEN call1_previous_goals_follow_up IS NULL OR call1_previous_goals_follow_up = '' THEN NULL
-            WHEN call1_previous_goals_follow_up = '1_succeed' THEN 'PM réussie'
-            WHEN call1_previous_goals_follow_up = '2_tried' THEN 'PM essayée'
-            WHEN call1_previous_goals_follow_up = '3_no_tried' THEN 'PM non essayée'
-            WHEN call1_previous_goals_follow_up = '4_no_goal' THEN 'Pas de PM' 
-            ELSE call1_previous_goals_follow_up 
-        END AS call1_previous_goals_follow_up,
-        CASE 
-            WHEN call2_previous_goals_follow_up IS NULL OR call2_previous_goals_follow_up = '' THEN NULL
-            WHEN call2_previous_goals_follow_up = '1_succeed' THEN 'PM réussie'
-            WHEN call2_previous_goals_follow_up = '2_tried' THEN 'PM essayée'
-            WHEN call2_previous_goals_follow_up = '3_no_tried' THEN 'PM non essayée'
-            WHEN call2_previous_goals_follow_up = '4_no_goal' THEN 'Pas de PM' 
-            ELSE call2_previous_goals_follow_up 
-        END AS call2_previous_goals_follow_up,
-        CASE 
-            WHEN call4_previous_goals_follow_up IS NULL OR call4_previous_goals_follow_up = '' THEN NULL
-            WHEN call4_previous_goals_follow_up = '1_succeed' THEN 'PM réussie'
-            WHEN call4_previous_goals_follow_up = '2_tried' THEN 'PM essayée'
-            WHEN call4_previous_goals_follow_up = '3_no_tried' THEN 'PM non essayée'
-            WHEN call4_previous_goals_follow_up = '4_no_goal' THEN 'Pas de PM' 
-            ELSE call4_previous_goals_follow_up 
-        END AS call4_previous_goals_follow_up,
-        CASE WHEN call0_goals_sms IS NULL OR call0_goals_sms = '' THEN 0 ELSE 1 END AS is_call0_goals,
-        CASE WHEN call1_goals_sms IS NULL OR call1_goals_sms = '' THEN 0 ELSE 1 END AS is_call1_goals,
-        CASE WHEN call2_goals_sms IS NULL OR call2_goals_sms = '' THEN 0 ELSE 1 END AS is_call2_goals,
-        CASE WHEN call3_goals_sms IS NULL OR call3_goals_sms = '' THEN 0 ELSE 1 END AS is_call3_goals,
-        CASE WHEN call0_status IS NULL OR call0_status = '' THEN 0 ELSE 1 END AS is_call0_status,
-        CASE WHEN call1_status IS NULL OR call1_status = '' THEN 0 ELSE 1 END AS is_call1_status,
-        CASE WHEN call2_status IS NULL OR call2_status = '' THEN 0 ELSE 1 END AS is_call2_status,
-        CASE WHEN call3_status IS NULL OR call3_status = '' THEN 0 ELSE 1 END AS is_call3_status,
+        {{ get_goals_follow_up('call1_previous_goals_follow_up') }} AS call1_previous_goals_follow_up,
+        {{ get_goals_follow_up('call2_previous_goals_follow_up') }} AS call2_previous_goals_follow_up,
+        {{ get_goals_follow_up('call4_previous_goals_follow_up') }} AS call4_previous_goals_follow_up,
+        {{ get_boolean_flag('call0_goals_sms') }} AS is_call0_goals,
+        {{ get_boolean_flag('call1_goals_sms') }} AS is_call1_goals,
+        {{ get_boolean_flag('call2_goals_sms') }} AS is_call2_goals,
+        {{ get_boolean_flag('call3_goals_sms') }} AS is_call3_goals,
+        {{ get_boolean_flag('call0_status') }} AS is_call0_status,
+        {{ get_boolean_flag('call1_status') }} AS is_call1_status,
+        {{ get_boolean_flag('call2_status') }} AS is_call2_status,
+        {{ get_boolean_flag('call3_status') }} AS is_call3_status,
         call0_duration,
         call1_duration,
         call2_duration,
@@ -227,18 +206,7 @@ SELECT distinct
     yc.gender,
     yc.birthdate,
     yc.ages AS age_today_in_months,
-    CASE 
-        WHEN (DATE_PART('year', g.started_at) - DATE_PART('year', yc.birthdate)) * 12
-            + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 12
-            THEN '0-11'
-        WHEN (DATE_PART('year', g.started_at) - DATE_PART('year', yc.birthdate)) * 12
-            + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 24
-            THEN '12-23'
-        WHEN (DATE_PART('year', g.started_at) - DATE_PART('year', yc.birthdate)) * 12
-            + (DATE_PART('month', g.started_at) - DATE_PART('month', yc.birthdate)) < 37
-            THEN '24-36'
-        ELSE NULL 
-    END AS age_range_at_start_of_cohort,
+    {{ get_age_range_at_start_of_cohort('yc.birthdate', 'g.started_at') }} AS age_range_at_start_of_cohort,
     yc.group_status,
     yc.group_end as end_of_active_status,
     yc.number_of_children,
@@ -267,18 +235,8 @@ SELECT distinct
         WHEN t6.tag_id IS NOT NULL THEN 1 
         ELSE 0 
     END AS is_estime_desengage_T2_conserve,
-    CASE 
-        WHEN t3.tag_id IS NOT NULL THEN 'Désengagé t1'
-        WHEN t4.tag_id IS NOT NULL THEN 'Estime désengagé t1 conservé'
-        --WHEN t5.tag_id IS NOT NULL THEN 'Estime désengagé t1'
-        ELSE 'Conservé t1'
-    END AS engagement_state_t1,
-    CASE 
-        WHEN t1.tag_id IS NOT NULL THEN 'Désengagé t2'
-        --WHEN t2.tag_id IS NOT NULL THEN 'Estime désengagé t2'
-        WHEN t6.tag_id IS NOT NULL THEN 'Estime désengagé t2 conservé'
-        ELSE 'Conservé t2'
-    END AS engagement_state_t2,
+    {{ get_engagement_state_t1('t3.tag_id', 't4.tag_id', 't5.tag_id') }} AS engagement_state_t1,
+    {{ get_engagement_state_t2('t1.tag_id', 't2.tag_id', 't6.tag_id') }} AS engagement_state_t2,
     p1.city_name AS parent1_city_name,
     so.name AS source_name,
     so.channel AS source_channel,
@@ -303,70 +261,19 @@ SELECT distinct
     f.is_call1_status,
     f.is_call2_status,
     f.is_call3_status,
-    f.is_call0_status + f.is_call1_status + f.is_call2_status + f.is_call3_status AS number_of_calls,
+    {{ get_number_of_calls('f.is_call0_status', 'f.is_call1_status', 'f.is_call2_status', 'f.is_call3_status') }} AS number_of_calls,
     f.call0_duration AS call_0_duration,
     f.call1_duration,
     f.call2_duration,
     f.call3_duration,
-    CASE 
-        WHEN f.call0_review = '0_very_satisfied'      THEN 'très satisfaisant' 
-        WHEN f.call0_review = '1_rather_satisfied'   THEN 'satisfaisant' 
-        WHEN f.call0_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  
-        WHEN f.call0_review = '3_very_dissatisfied'  THEN 'très insatisfaisant' 
-        WHEN f.call0_review = ''                     THEN 'vide' 
-        ELSE f.call0_review 
-    END AS review_call0,
-    CASE 
-        WHEN f.call1_review = '0_very_satisfied'      THEN 'très satisfaisant' 
-        WHEN f.call1_review = '1_rather_satisfied'   THEN 'satisfaisant' 
-        WHEN f.call1_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  
-        WHEN f.call1_review = '3_very_dissatisfied'  THEN 'très insatisfaisant' 
-        -- TYPE ERROR
-        WHEN f.call0_review = ''                     THEN 'vide' 
-        ELSE f.call1_review 
-    END AS review_call1,
-    CASE 
-        WHEN f.call2_review = '0_very_satisfied'      THEN 'très satisfaisant' 
-        WHEN f.call2_review = '1_rather_satisfied'   THEN 'satisfaisant' 
-        WHEN f.call2_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  
-        WHEN f.call2_review = '3_very_dissatisfied'  THEN 'très insatisfaisant' 
-        -- TYPE ERROR
-        WHEN f.call0_review = ''                     THEN 'vide' 
-        ELSE f.call2_review 
-    END AS review_call2,
-    CASE 
-        WHEN f.call3_review = '0_very_satisfied'      THEN 'très satisfaisant' 
-        WHEN f.call3_review = '1_rather_satisfied'   THEN 'satisfaisant' 
-        WHEN f.call3_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  
-        WHEN f.call3_review = '3_very_dissatisfied'  THEN 'très insatisfaisant' 
-        -- TYPE ERROR
-        WHEN f.call0_review = ''                     THEN 'vide' 
-        ELSE f.call3_review 
-    END AS review_call3,
-    CASE 
-        WHEN f.call0_attempt = 'first_call_attempt'         THEN '1ère tentative'
-        WHEN f.call0_attempt = 'second_call_attempt'        THEN '2ème tentative'
-        WHEN f.call0_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative'
-        ELSE f.call0_attempt 
-    END AS nb_of_tries_call0,
-    CASE 
-        WHEN f.call1_attempt = 'first_call_attempt'         THEN '1ère tentative'
-        WHEN f.call1_attempt = 'second_call_attempt'        THEN '2ème tentative'
-        WHEN f.call1_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative'
-        ELSE f.call1_attempt 
-    END AS nb_of_tries_call1,
-    CASE 
-        WHEN f.call2_attempt = 'first_call_attempt'         THEN '1ère tentative'
-        WHEN f.call2_attempt = 'second_call_attempt'        THEN '2ème tentative'
-        WHEN f.call2_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative'
-        ELSE f.call2_attempt 
-    END AS nb_of_tries_call2,
-    CASE 
-        WHEN f.call3_attempt = 'first_call_attempt'         THEN '1ère tentative'
-        WHEN f.call3_attempt = 'second_call_attempt'        THEN '2ème tentative'
-        WHEN f.call3_attempt = 'third_or_more_calls_attempt' THEN '3ème tentative'
-        ELSE f.call3_attempt 
-    END AS nb_of_tries_call3,
+    {{ get_call_review('f.call0_review') }} AS review_call0,
+    {{ get_call_review('f.call1_review') }} AS review_call1,
+    {{ get_call_review('f.call2_review') }} AS review_call2,
+    {{ get_call_review('f.call3_review') }} AS review_call3,
+    {{ get_call_attempt('f.call0_attempt') }} AS nb_of_tries_call0,
+    {{ get_call_attempt('f.call1_attempt') }} AS nb_of_tries_call1,
+    {{ get_call_attempt('f.call2_attempt') }} AS nb_of_tries_call2,
+    {{ get_call_attempt('f.call3_attempt') }} AS nb_of_tries_call3,
     COALESCE(p1.mid_term_rate, p2.mid_term_rate) AS mid_term_rate,
     COALESCE(p1.mid_term_reaction, p2.mid_term_reaction) AS mid_term_reaction,
     m2.name AS module2_name,
@@ -374,15 +281,9 @@ SELECT distinct
     m4.name AS module4_name,
     m5.name AS module5_name,
     m6.name AS module6_name, 
-    CASE 
-        WHEN is_bilingual = '0_yes' THEN 'Oui'
-        WHEN is_bilingual = '1_no'  THEN 'Non'
-        ELSE null
-    END AS is_bilingue,
-    (DATE_PART('year', g.started_at) - DATE_PART('year', f.created_at)) * 12
-        + (DATE_PART('month', g.started_at) - DATE_PART('month', f.created_at)) AS registration_delay,
-    (DATE_PART('year', f.created_at) - DATE_PART('year', yc.birthdate)) * 12
-        + (DATE_PART('month', f.created_at) - DATE_PART('month', yc.birthdate)) AS age_at_registration,
+    {{ get_is_bilingual('is_bilingual') }} AS is_bilingue,
+    {{ get_registration_delay('g.started_at', 'f.created_at') }} AS registration_delay,
+    {{ get_age_at_registration('f.created_at', 'yc.birthdate') }} AS age_at_registration,
     lot.tag_list,
     g.is_excluded_from_analytics,
     (f.call0_status = 'OK' OR f.call1_status = 'OK') as is_call_0_1_status_OK

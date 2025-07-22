@@ -59,13 +59,17 @@ source as (
 change_status as (
     select 
         item_id,
-        parse_json(object_changes):"updated_at"[0] as date_updated,
-        parse_json(object_changes):"group_status"[1] as group_status
+        --parse_json(object_changes):"group_status"[1] as group_status,
+        max(parse_json(object_changes):"updated_at"[0]) as date_updated,
     from children c 
     left join versions v
         on v.item_id = c.child_id
+    -- Voir avec Marion
+    -- Que faire des cas ou il y a plusieurs changement de group_status ?
+    -- On utilise group_status = waiting dans les macros mais ne fait pas partie des cas détectés
     where item_type = 'Child' 
         and parse_json(object_changes):"group_status"[1] in ('stopped', 'disengaged')
+    group by 1--,2
 ),
 
 child_data as (
@@ -96,7 +100,7 @@ child_lead as (
         date(cd.date_started) as date_started, 
         date(cd.ended_at_clean) as ended_at_clean,
         date(cs.date_updated) as date_updated,
-        cs.group_status,
+        --cs.group_status,
         case 
             when date(ended_at_clean) <= date(date_updated) then date(ended_at_clean)
             when date(date_updated) <= date(ended_at_clean) then date(date_updated)
@@ -105,7 +109,8 @@ child_lead as (
         cd.departement,
         cd.age_at_registration,
         cd.child_age_in_month,
-        cd.child_status
+        cd.child_status,
+        --null as child_status
     from child_data cd 
     left join change_status cs
         on cd.child_id = cs.item_id
