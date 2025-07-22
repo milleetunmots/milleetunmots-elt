@@ -70,7 +70,7 @@ select
     is_bilingue,
     registration_delay,
     age_at_registration,
-    tag_list,
+    array_sort(strtok_to_array(tag_list, ',')) as tag_list,
     is_excluded_from_analytics,
     is_call_0_1_status_OK
 from source

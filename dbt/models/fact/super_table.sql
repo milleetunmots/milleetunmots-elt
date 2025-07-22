@@ -284,7 +284,7 @@ SELECT distinct
     {{ get_is_bilingual('is_bilingual') }} AS is_bilingue,
     {{ get_registration_delay('g.started_at', 'f.created_at') }} AS registration_delay,
     {{ get_age_at_registration('f.created_at', 'yc.birthdate') }} AS age_at_registration,
-    lot.tag_list,
+    array_sort(strtok_to_array(lot.tag_list, ',')) as tag_list,
     g.is_excluded_from_analytics,
     (f.call0_status = 'OK' OR f.call1_status = 'OK') as is_call_0_1_status_OK
 FROM child_parent_family AS cpf
