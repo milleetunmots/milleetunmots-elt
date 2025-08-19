@@ -120,7 +120,7 @@ child_lead as (
 
 select
     concat(cpf.family_id, '_', cpf.child_id) as ind,
-    cl.family_id,
+    cpf.family_id,
     cl.group_name as cohort_name,
     -- filters
     s.channel as source_channel,
