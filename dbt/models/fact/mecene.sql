@@ -120,7 +120,7 @@ child_lead as (
 
 select
     concat(cpf.family_id, '_', cpf.child_id) as ind,
-    cpf.family_id,
+    cl.family_id,
     cl.group_name as cohort_name,
     -- filters
     s.channel as source_channel,
@@ -131,7 +131,7 @@ select
     p.departement,
 
     -- main fields
-    cpf.child_id,
+    cl.child_id,
     cpf.is_a_father,
     date_trunc('month', cpf.date_created) as month_of_registration,
     cpf.date_created as date_of_registration,
