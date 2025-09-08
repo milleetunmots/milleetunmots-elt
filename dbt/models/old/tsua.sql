@@ -104,7 +104,8 @@ all_calls AS (
     FROM child_supports
 )
 
-SELECT 
+SELECT
+    concat(cf.family_id, '_', replace(ac.call_number, ' ', '')) AS unique_id,
     cf.family_id,
     au.name AS supporter_name, 
     au.email, 
@@ -117,12 +118,12 @@ SELECT
     ac.pm_posee,
     ac.pm_posee_call,
     CASE WHEN ac.call_review = '0_very_satisfied' THEN 'très satisfaisant' WHEN ac.call_review = '1_rather_satisfied' THEN 'satisfaisant' WHEN ac.call_review = '2_rather_dissatisfied' THEN 'peu satisfaisant'  WHEN ac.call_review = '3_very_dissatisfied' THEN 'très insatisfaisant' ELSE ac.call_review END AS call_review,
-    pm_posee_callX_status,
+    pm_posee_callX_status as pm_posee_callx_status,
     ac.duo_call0_1_ok,
     ac.duo_call1_2_ok,
     ac.duo_call2_3_ok,
-    ac.duo_call0_OK_1_KO,
-    ac.duo_call0_OK_1_OK,
+    ac.duo_call0_OK_1_KO as duo_call0_ok_1_ko,
+    ac.duo_call0_OK_1_OK as duo_call0_ok_1_ok,
     au.is_disabled
 FROM all_calls AS ac 
 LEFT JOIN child_family AS cf ON ac.id = cf.family_id

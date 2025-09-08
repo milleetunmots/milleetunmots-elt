@@ -1,30 +1,32 @@
-with c as (
+-- Sources avec refs isolées au début
+with child as (
     select *
-    from {{ ref('stg_1001mots_app__children') }}
+    from {{ ref('child') }}
 ),
 
-cs as (
+child_supports as (
     select *
     from {{ ref('stg_1001mots_app__child_supports') }}
 ),
 
-g as (
+groups as (
     select *
     from {{ ref('groups') }}
 ),
 
-au as (
+admin_users as (
     select *
-    from {{ ref('stg_1001mots_app__admin_users') }}
+    from {{ ref('admin_users') }}
 ),
 
+-- CTEs métier
 child_family as (
     select 
         cs.family_id, 
         max(c.child_id) as child_id, 
         max(c.group_id) as group_id 
-    from c
-    left join cs
+    from child c
+    left join child_supports cs
         on c.family_id = cs.family_id
     group by 1 
 ),
@@ -45,7 +47,7 @@ all_calls as (
         0 as duo_call2_3_ok,
         null as duo_call0_ok_1_ko,
         null as duo_call0_ok_1_ok
-    from cs
+    from child_supports
 
     union all 
 
@@ -64,7 +66,7 @@ all_calls as (
         0 as duo_call2_3_ok,
         case when lower(call0_status) = 'ok' and lower(call1_status) = 'ko' then 1 when lower(call0_status) = 'ok' then 0 else null end as duo_call0_ok_1_ko,
         case when lower(call0_status) = 'ok' and lower(call1_status) = 'ok' then 1 when lower(call0_status) = 'ok' then 0 else null end as duo_call0_ok_1_ok
-    from cs
+    from child_supports
 
     union all 
 
@@ -83,7 +85,7 @@ all_calls as (
         0 as duo_call2_3_ok,
         null as duo_call0_ok_1_ko, 
         null as duo_call0_ok_1_ok
-    from cs
+    from child_supports
 
     union all 
 
@@ -95,17 +97,19 @@ all_calls as (
         call3_status as call_done,
         call3_review as call_review,
         case when call3_goals_sms is not null and call3_goals_sms != '' then 1 else null end as pm_posee,
-        case when call3_goals is not null and call3_goals != '' then 1 else null end as pm_posee_call,
+        case when call3_goals is not null and call3_goals_sms != '' then 1 else null end as pm_posee_call,
         case when call4_previous_goals_follow_up in ('1_succeed', '2_tried') then 1 else null end as pm_posee_callx_status,
         0 as duo_call0_1_ok,
         0 as duo_call1_2_ok,
         case when lower(call2_status) = 'ok' and lower(call3_status) = 'ok' then 1 else 0 end as duo_call2_3_ok,
         null as duo_call0_ok_1_ko,
         null as duo_call0_ok_1_ok
-    from cs
+    from child_supports
 )
 
-select 
+-- Requête principale
+select
+    concat(cf.family_id, '_', replace(ac.call_number, ' ', '')) AS unique_id,
     cf.family_id,
     au.name as supporter_name, 
     au.email, 
@@ -134,9 +138,9 @@ select
 from all_calls as ac 
 left join child_family as cf
     on ac.family_id = cf.family_id
-left join g
+left join groups g
     on cf.group_id = g.group_id 
-left join au
+left join admin_users au
     on au.supporter_id = ac.supporter_id
 where au.name is not null 
 and not g.is_excluded_from_analytics
