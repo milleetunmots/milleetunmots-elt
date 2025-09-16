@@ -109,7 +109,8 @@ child_lead as (
         cd.departement,
         cd.age_at_registration,
         cd.child_age_in_month,
-        cd.child_status,
+        cd.child_status--,
+        --cd.is_excluded_from_analytics
         --null as child_status
     from child_data cd 
     left join change_status cs
@@ -120,6 +121,7 @@ child_lead as (
 
 select
     concat(cpf.family_id, '_', cpf.child_id) as ind,
+    --is_excluded_from_analytics,
     cpf.family_id,
     cl.group_name as cohort_name,
     -- filters
