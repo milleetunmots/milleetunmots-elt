@@ -23,12 +23,16 @@ admin_users as (
 child_family as (
     select 
         cs.family_id, 
-        max(c.child_id) as child_id, 
-        max(c.group_id) as group_id 
+        c.child_id as child_id, 
+        c.group_id as group_id,
+        row_number() over (partition by cs.family_id order by c.date_birth desc) as ranking
     from child c
     left join child_supports cs
         on c.family_id = cs.family_id
-    group by 1 
+    -- on ne prend que le premier enfant de la famille
+    -- ayant intégré une cohorte
+    where c.group_id is not null
+    qualify ranking = 1
 ),
 
 all_calls as (

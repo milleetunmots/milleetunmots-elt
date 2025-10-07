@@ -2,7 +2,7 @@
 
 -- Sources avec refs isolées au début
 WITH children AS (
-    SELECT * FROM {{ ref('stg_1001mots_app__children') }}
+    SELECT * FROM {{ ref('child') }}
 ),
 
 parents AS (
@@ -14,11 +14,11 @@ child_supports AS (
 ),
 
 admin_users AS (
-    SELECT * FROM {{ ref('stg_1001mots_app__admin_users') }}
+    SELECT * FROM {{ ref('admin_users') }}
 ),
 
 groups AS (
-    SELECT * FROM {{ ref('stg_1001mots_app__groups') }}
+    SELECT * FROM {{ ref('groups') }}
 ),
 
 children_sources AS (
@@ -71,19 +71,12 @@ youngest_child AS (
         ch.registration_source,
         ch.group_status,
         g.date_ended as group_end,
-        max_birthdate.number_of_children
+        row_number() over (partition by ch.family_id order by ch.date_birth desc) as ranking,
+        row_number() over (partition by ch.family_id order by ch.date_birth) as number_of_children
     FROM children AS ch
-    INNER JOIN groups AS g ON ch.group_id = g.group_id
-    INNER JOIN (
-        SELECT
-            family_id, 
-            MAX(date_birth) AS youngest_child_birthdate,
-            MAX(child_id) as youngest_child_id,
-            COUNT(child_id) AS number_of_children
-        FROM children
-        GROUP BY family_id
-    ) AS max_birthdate
-    ON max_birthdate.family_id = ch.family_id AND max_birthdate.youngest_child_birthdate = ch.date_birth
+    -- On veut l'ensemble des enfants, même ceux qui ne sont pas dans un groupe ?
+    LEFT JOIN groups AS g ON ch.group_id = g.group_id
+    qualify ranking= 1
 ),
 
 source AS (
@@ -106,285 +99,48 @@ SELECT DISTINCT
     -- array_to_string(ARRAY(SELECT DISTINCT UNNEST(cpf.tag_name::varchar[]) ORDER BY 1), ',') as tag_name,
     cpf.tag_name,
     
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ok,
-   
-    CASE 
-        WHEN cs.call0_status != 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '') 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_not_setup,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status != 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status != 'OK' 
-        AND cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ko_pm0_ok,
-   
-   CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status != 'OK' 
-        AND cs.call1_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ko_pm0_ko,
-        
-    CASE 
-        WHEN cs.call0_status = 'OK'
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ok,
-    
-    CASE
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        AND (cs.call1_goals_sms IS NULL OR cs.call1_goals_sms = '') 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_notsetup,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' AND cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' 
-        AND cs.call2_status = 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup_call2_ok,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' 
-        AND cs.call2_status != 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup_call2_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' 
-        AND cs.call2_status = 'OK' 
-        AND cs.call2_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        THEN 1 ELSE NULL END AS is_call0_ok_call1_ok_pm0_ok_call2_ok_pm1_ok,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried') 
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' 
-        AND cs.call2_status = 'OK'
-        AND cs.call2_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') 
-        THEN 1 ELSE NULL END AS is_call0_ok_call1_ok_pm0_ok_call2_ok_pm1_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') 
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') 
-        AND (cs.call1_goals_sms IS NULL OR cs.call1_goals_sms = '') 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_notsetup,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '') 
-        AND cs.call1_status = 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_not_setup_call1_ok,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '') 
-        AND cs.call1_status != 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_not_setup_call1_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '') 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_not_setup_call1_ok_pm1_setup,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' 
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '') 
-        AND cs.call1_status = 'OK' 
-        AND (cs.call1_goals_sms IS NULL OR cs.call1_goals_sms = '') 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_not_setup_call1_ok_pm1_notsetup,
-    
-    CASE 
-        WHEN cs.call0_status!= 'OK' 
-        AND cs.call1_status = 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ko_call1_ok,
-    
-    CASE 
-        WHEN cs.call0_status!= 'OK' 
-        AND cs.call1_status != 'OK' 
-        THEN 1 ELSE NULL END AS is_call0_ko_call1_ko,
-    
-    CASE 
-        WHEN cs.call0_status!= 'OK' 
-        AND cs.call1_status = 'OK' 
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' 
-        THEN 1 ELSE NULL END AS is_call0_ko_call1_ok_pm1_setup,
- 
-    CASE 
-        WHEN cs.call0_status = 'OK' -- APPEL 0 OK
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' -- PM0 SETUP
-        AND cs.call1_status = 'OK' -- CALL 1 OK
-        AND cs.call1_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') -- PM0 ECHOUE
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup_call2_ok,
-
-    CASE 
-        WHEN cs.call0_status = 'OK' -- APPEL 0 OK
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' -- PM0 SETUP
-        AND cs.call1_status = 'OK' -- CALL 1 OK
-        AND cs.call1_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') -- PM0 ECHOUE
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status != 'OK' -- APPEL 2 KO 
-        THEN 1 ELSE NULL END AS is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup_call2_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' -- APPEL 0 OK
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' -- PM0 SETUP
-        AND cs.call1_status = 'OK' -- CALL 1 OK
-        AND cs.call1_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') -- PM0 ECHOUE
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK 
-        AND cs.call2_previous_goals_follow_up IN ('1_succeed', '2_tried') -- PM1 OK
-        THEN 1 ELSE NULL END AS is_pm0_setup_pm0_ko_pm1_setup_call2_ok_pm1_ok,
-    
-   CASE 
-        WHEN cs.call0_status = 'OK' -- APPEL 0 OK
-        AND cs.call0_goals_sms IS NOT NULL AND cs.call0_goals_sms != '' -- PM0 SETUP
-        AND cs.call1_status = 'OK' -- CALL 1 OK
-        AND cs.call1_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') -- PM0 ECHOUE
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK 
-        AND cs.call2_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') -- PM1 ECHOUE
-        THEN 1 ELSE NULL END AS is_pm0_setup_pm0_ko_pm1_setup_call2_ok_pm1_ko,
-    
-    CASE 
-        WHEN cs.call0_status!= 'OK' -- APPEL 0 KO
-        AND cs.call1_status = 'OK' -- APPEL 1 OK
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK 
-        THEN 1 ELSE NULL END AS is_call0_ko_call1_ok_pm1_setup_call2_ok,
-    
-    CASE 
-        WHEN cs.call0_status!= 'OK' -- APPEL 0 KO
-        AND cs.call1_status = 'OK'  -- APPEL 1 OK
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status != 'OK' -- APPEL 2 KO 
-        THEN 1 ELSE NULL END AS is_call0_ko_call1_ok_pm1_setup_call2_ko,
-    
-    CASE 
-        WHEN cs.call0_status!= 'OK' -- APPEL 0 KO
-        AND cs.call1_status = 'OK'  -- APPEL 1 OK
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK 
-        AND cs.call2_previous_goals_follow_up IN ('1_succeed', '2_tried') -- PM1 OK
-        THEN 1 ELSE NULL END AS is_call0_ko_call1_ok_pm1_setup_call2_ok_pm1_ok,
-    
-    CASE 
-        WHEN cs.call0_status!= 'OK' -- APPEL 0 KO
-        AND cs.call1_status = 'OK' -- APPEL 1 OK
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK 
-        AND cs.call2_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') -- PM1 ECHOUE
-        THEN 1 ELSE NULL END AS is_call0_ko_call1_ok_pm1_setup_call2_ok_pm1_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' -- APPEL 0 OK
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '')  -- PM0 NOT SETUP
-        AND cs.call1_status = 'OK' -- APPEL 1 OK
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK
-        THEN 1 ELSE NULL END AS is_call0_ok_call1_ok_pm1_setup_call2_ok,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' -- APPEL 0 OK
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '')  -- PM0 NOT SETUP
-        AND cs.call1_status = 'OK' -- APPEL 1 OK
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status != 'OK' -- APPEL 2 KO
-        THEN 1 ELSE NULL END AS is_call0_ok_call1_ok_pm1_setup_call2_ko,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' -- APPEL 0 OK
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '') -- PM0 NOT SETUP
-        AND cs.call1_status = 'OK' -- APPEL 1 OK
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK 
-        AND cs.call2_previous_goals_follow_up IN ('1_succeed', '2_tried') -- PM1 OK
-        THEN 1 ELSE NULL END AS is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ok,
-    
-    CASE 
-        WHEN cs.call0_status = 'OK' -- APPEL 0 OK
-        AND (cs.call0_goals_sms IS NULL OR cs.call0_goals_sms = '') -- PM0 NOT SETUP
-        AND cs.call1_status = 'OK' -- APPEL 1 OK
-        AND cs.call1_goals_sms IS NOT NULL AND cs.call1_goals_sms != '' -- PM1 SETUP
-        AND cs.call2_status = 'OK' -- APPEL 2 OK 
-        AND cs.call2_previous_goals_follow_up NOT IN ('1_succeed', '2_tried') -- PM1 KO
-        THEN 1 ELSE NULL END AS is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ko,
- 
-    CASE 
-        WHEN cs.call0_status!= 'OK' 
-        AND cs.call1_status = 'OK' 
-        AND (cs.call1_goals_sms IS NULL OR cs.call1_goals_sms = '') 
-        THEN 1 ELSE NULL END AS is_call0_ko_call1_ok_pm1_notsetup
+    -- Utilisation des macros pour les métriques de funnel
+    {{ is_call0_ok('cs') }} AS is_call0_ok,
+    {{ is_call0_ko('cs') }} AS is_call0_ko,
+    {{ is_call0_ok_pm0_setup('cs') }} AS is_call0_ok_pm0_setup,
+    {{ is_call0_ok_pm0_not_setup('cs') }} AS is_call0_ok_pm0_not_setup,
+    {{ is_call0_ok_pm0_setup_call1_ok('cs') }} AS is_call0_ok_pm0_setup_call1_ok,
+    {{ is_call0_ok_pm0_setup_call1_ko('cs') }} AS is_call0_ok_pm0_setup_call1_ko,
+    {{ is_call0_ok_pm0_setup_call1_ko_pm0_ok('cs') }} AS is_call0_ok_pm0_setup_call1_ko_pm0_ok,
+    {{ is_call0_ok_pm0_setup_call1_ko_pm0_ko('cs') }} AS is_call0_ok_pm0_setup_call1_ko_pm0_ko,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ok('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ok,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ko('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ko,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_notsetup('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_notsetup,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup_call2_ok('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup_call2_ok,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup_call2_ko('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ok_pm1_setup_call2_ko,
+    {{ is_call0_ok_call1_ok_pm0_ok_call2_ok_pm1_ok('cs') }} AS is_call0_ok_call1_ok_pm0_ok_call2_ok_pm1_ok,
+    {{ is_call0_ok_call1_ok_pm0_ok_call2_ok_pm1_ko('cs') }} AS is_call0_ok_call1_ok_pm0_ok_call2_ok_pm1_ko,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_notsetup('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_notsetup,
+    {{ is_call0_ok_pm0_not_setup_call1_ok('cs') }} AS is_call0_ok_pm0_not_setup_call1_ok,
+    {{ is_call0_ok_pm0_not_setup_call1_ko('cs') }} AS is_call0_ok_pm0_not_setup_call1_ko,
+    {{ is_call0_ok_pm0_not_setup_call1_ok_pm1_setup('cs') }} AS is_call0_ok_pm0_not_setup_call1_ok_pm1_setup,
+    {{ is_call0_ok_pm0_not_setup_call1_ok_pm1_notsetup('cs') }} AS is_call0_ok_pm0_not_setup_call1_ok_pm1_notsetup,
+    {{ is_call0_ko_call1_ok('cs') }} AS is_call0_ko_call1_ok,
+    {{ is_call0_ko_call1_ko('cs') }} AS is_call0_ko_call1_ko,
+    {{ is_call0_ko_call1_ok_pm1_setup('cs') }} AS is_call0_ko_call1_ok_pm1_setup,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup_call2_ok('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup_call2_ok,
+    {{ is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup_call2_ko('cs') }} AS is_call0_ok_pm0_setup_call1_ok_pm0_ko_pm1_setup_call2_ko,
+    {{ is_pm0_setup_pm0_ko_pm1_setup_call2_ok_pm1_ok('cs') }} AS is_pm0_setup_pm0_ko_pm1_setup_call2_ok_pm1_ok,
+    {{ is_pm0_setup_pm0_ko_pm1_setup_call2_ok_pm1_ko('cs') }} AS is_pm0_setup_pm0_ko_pm1_setup_call2_ok_pm1_ko,
+    {{ is_call0_ko_call1_ok_pm1_setup_call2_ok('cs') }} AS is_call0_ko_call1_ok_pm1_setup_call2_ok,
+    {{ is_call0_ko_call1_ok_pm1_setup_call2_ko('cs') }} AS is_call0_ko_call1_ok_pm1_setup_call2_ko,
+    {{ is_call0_ko_call1_ok_pm1_setup_call2_ok_pm1_ok('cs') }} AS is_call0_ko_call1_ok_pm1_setup_call2_ok_pm1_ok,
+    {{ is_call0_ko_call1_ok_pm1_setup_call2_ok_pm1_ko('cs') }} AS is_call0_ko_call1_ok_pm1_setup_call2_ok_pm1_ko,
+    {{ is_call0_ok_call1_ok_pm1_setup_call2_ok('cs') }} AS is_call0_ok_call1_ok_pm1_setup_call2_ok,
+    {{ is_call0_ok_call1_ok_pm1_setup_call2_ko('cs') }} AS is_call0_ok_call1_ok_pm1_setup_call2_ko,
+    {{ is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ok('cs') }} AS is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ok,
+    {{ is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ko('cs') }} AS is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ko,
+    {{ is_call0_ko_call1_ok_pm1_notsetup('cs') }} AS is_call0_ko_call1_ok_pm1_notsetup
 
 FROM child_parent_family AS cpf
-INNER JOIN youngest_child AS yc ON yc.child_id = cpf.child_id
-INNER JOIN child_supports AS cs ON cpf.family_id = cs.family_id
+inner JOIN youngest_child AS yc ON yc.child_id = cpf.child_id
+inner JOIN child_supports AS cs ON cpf.family_id = cs.family_id
 LEFT JOIN groups AS g ON yc.group_id = g.group_id
 LEFT JOIN source AS s ON s.child_id = cpf.child_id
