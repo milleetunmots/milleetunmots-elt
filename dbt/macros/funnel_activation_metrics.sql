@@ -1,17 +1,60 @@
--- Métriques de base pour call0
-{% macro is_call0_ok(cs) %}
-    CASE 
-        WHEN {{ cs }}.call0_status = 'OK' 
-        THEN 1 ELSE NULL 
+
+-- Métriques de base pour calls
+
+{% macro clean_call_status(call_status) %}
+    CASE
+        when {{ call_status }} in ('OK', 'KO', 'Incomplet / Pas de choix de module', 'Ne pas appeler', 'Numéro erroné') then {{ call_status }}
+        WHEN {{ call_status }} IS NOT NULL AND {{ call_status }} != '' then 'Autre'
+        ELSE NULL
     END
 {% endmacro %}
 
-{% macro is_call0_ko(cs) %}
+{% macro is_call_ok(call_status) %}
     CASE 
-        WHEN {{ cs }}.call0_status != 'OK' 
-        THEN 1 ELSE NULL 
+        WHEN {{ call_status }} = 'OK' 
+        THEN 1 ELSE 0
     END
 {% endmacro %}
+
+{% macro is_call_ko(call_status) %}
+    CASE 
+        WHEN {{ call_status }} = 'KO' 
+        THEN 1 ELSE 0 
+    END
+{% endmacro %}
+
+{% macro is_call_not_ok(call_status) %}
+    CASE 
+        WHEN {{ call_status }} is null or {{ call_status }} != 'OK' 
+        THEN 1 ELSE 0 
+    END
+{% endmacro %}
+
+{% macro is_call_not_ko(call_status) %}
+    CASE 
+        WHEN {{ call_status }} is null or {{ call_status }} != 'KO' 
+        THEN 1 ELSE 0 
+    END
+{% endmacro %}
+
+{% macro is_pm_setup(call_goal_sms) %}
+    CASE 
+        WHEN {{ call_goal_sms }} IS NOT NULL AND {{ call_goal_sms }} != '' 
+        THEN 'OUI' ELSE 'NON' 
+    END
+{% endmacro %}
+
+{% macro pm_follow_up(call_previous_goals_follow_up) %}
+    CASE {{ call_previous_goals_follow_up }}
+        WHEN '1_succeed' then 'PM réussie'
+        WHEN '2_tried' then 'PM essayée'
+        WHEN '3_no_tried' then 'PM non essayée'
+        WHEN '4_no_goal' then 'Pas de PM'
+        when '5_not_enough_information' then 'Pas assez d\'information'
+        ELSE NULL
+    END
+{% endmacro %}
+
 
 -- Métriques pour PM0 (goals SMS)
 {% macro is_call0_ok_pm0_setup(cs) %}
