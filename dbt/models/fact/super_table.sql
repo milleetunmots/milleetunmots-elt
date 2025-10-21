@@ -150,11 +150,12 @@ tags_a AS (
     SELECT 
         t.tag_id,
         t.tag_name,
-        tg.taggable_id AS family_id
+        tg.taggable_id AS family_id,
+        tg.date_created
     FROM taggings AS tg
     INNER JOIN tags AS t
         ON tg.tag_id = t.tag_id
-    WHERE tg.taggable_type = 'ChildSupport' AND tg.tag_id IN ('876','874','901','900','893','900')
+    WHERE tg.taggable_type = 'ChildSupport' AND tg.tag_id IN ('876','874','901','900','893','900','1071')
 ),
 
 -- CTE pour créer une liste de tags par famille
@@ -176,6 +177,11 @@ groups_info AS (
         date_created as created_at,
         date_started as started_at,
         group_name as name,
+        -- Le tag 1071 - disengage-2appelsKO s'applique après une session de CALL
+        -- pas juste après le call
+        date_call1_end,
+        date_call2_end,
+        date_call3_end,
         is_excluded_from_analytics
     FROM groups
 ),
@@ -264,6 +270,9 @@ SELECT distinct
     f.is_call2_status,
     f.is_call3_status,
     {{ get_number_of_calls('f.is_call0_status', 'f.is_call1_status', 'f.is_call2_status', 'f.is_call3_status') }} AS number_of_calls,
+    {{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
+    --{{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
+    {{ was_engaged_at_call('', 'g.date_call0_start','g.date_call0_end') }} AS was_engaged_at_call0,
     f.call0_duration AS call_0_duration,
     f.call1_duration,
     f.call2_duration,
@@ -323,6 +332,9 @@ LEFT JOIN tags_a AS t5
 LEFT JOIN tags_a AS t6
     ON t6.family_id = cpf.family_id
     AND t6.tag_id = '877'
+LEFT JOIN tags_a AS t7
+    ON t7.family_id = cpf.family_id
+    AND t7.tag_id = '1071'
 LEFT JOIN modules AS m2
     ON m2.id = f.module2_chosen_by_parents_id
 LEFT JOIN modules AS m3

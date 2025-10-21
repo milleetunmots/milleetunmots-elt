@@ -37,3 +37,4 @@ select
     group_status::string as group_status
     --Ajouter les autres colonnes
 from source
+where _sdc_deleted_at is null

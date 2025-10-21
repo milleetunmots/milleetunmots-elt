@@ -22,4 +22,14 @@
         WHEN {{ column_name }} = '1_no'  THEN 'Non'
         ELSE NULL
     END
-{% endmacro %} 
+{% endmacro %}
+
+{% macro get_call_number_when_disengaged(t7_date_created, date_call1_end, date_call2_end, date_call3_end) %}
+    CASE 
+        when {{ t7_date_created }} is null then null
+        when {{ t7_date_created }} > {{ date_call3_end }}  THEN 3
+        WHEN {{ t7_date_created }} > {{ date_call2_end }} THEN 2
+        WHEN {{ t7_date_created }} > {{ date_call1_end }} THEN 1
+        ELSE NULL
+    END
+{% endmacro %}
