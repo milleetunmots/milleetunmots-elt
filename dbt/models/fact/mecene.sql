@@ -60,7 +60,8 @@ change_status as (
     select 
         item_id,
         --parse_json(object_changes):"group_status"[1] as group_status,
-        max(parse_json(object_changes):"updated_at"[0]) as date_updated,
+        max(parse_json(object_changes):"updated_at"[0]) as date_updated
+        --parse_json(object_changes):"updated_at"[0] as date_updated
     from children c 
     left join versions v
         on v.item_id = c.child_id

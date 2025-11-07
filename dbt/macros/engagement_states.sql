@@ -33,3 +33,12 @@
         ELSE NULL
     END
 {% endmacro %}
+
+{% macro was_engaged_at_call(date_call_end, group_status) %}
+    CASE 
+        WHEN {{ date_call_end }} IS NULL THEN NULL
+        WHEN {{ group_status }} = 'active' THEN 1
+        WHEN {{ group_status }} = 'stopped' THEN 0
+        ELSE NULL
+    END
+{% endmacro %}

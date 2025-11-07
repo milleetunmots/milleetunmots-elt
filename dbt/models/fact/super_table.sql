@@ -31,6 +31,10 @@ support_modules AS (
     SELECT * FROM {{ ref('stg_1001mots_app__support_modules') }}
 ),
 
+cls as (
+    SELECT * FROM {{ ref('child_life_status') }}
+),
+
 -- CTE faisant la relation entre les parents, les enfants et la famille
 child_parent_family AS (
     SELECT 
@@ -155,7 +159,7 @@ tags_a AS (
     FROM taggings AS tg
     INNER JOIN tags AS t
         ON tg.tag_id = t.tag_id
-    WHERE tg.taggable_type = 'ChildSupport' AND tg.tag_id IN ('876','874','901','900','893','900','1071')
+    WHERE tg.taggable_type = 'ChildSupport' AND tg.tag_id IN ('876','874','901','900','893','900','1071', '1076')
 ),
 
 -- CTE pour créer une liste de tags par famille
@@ -179,9 +183,14 @@ groups_info AS (
         group_name as name,
         -- Le tag 1071 - disengage-2appelsKO s'applique après une session de CALL
         -- pas juste après le call
-        date_call1_end,
-        date_call2_end,
-        date_call3_end,
+        date_call0_start::date as date_call0_start,
+        date_call1_start::date as date_call1_start,
+        date_call2_start::date as date_call2_start,
+        date_call3_start::date as date_call3_start,
+        date_call0_end::date as date_call0_end,
+        date_call1_end::date as date_call1_end,
+        date_call2_end::date as date_call2_end,
+        date_call3_end::date as date_call3_end,
         is_excluded_from_analytics
     FROM groups
 ),
@@ -272,7 +281,14 @@ SELECT distinct
     {{ get_number_of_calls('f.is_call0_status', 'f.is_call1_status', 'f.is_call2_status', 'f.is_call3_status') }} AS number_of_calls,
     {{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
     --{{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
-    {{ was_engaged_at_call('', 'g.date_call0_start','g.date_call0_end') }} AS was_engaged_at_call0,
+    --{{ was_engaged_at_call('g.date_call0_end', 'cls_call0.group_status') }} AS was_engaged_at_call0,
+    --{{ was_engaged_at_call('g.date_call1_end', 'cls_call1.group_status') }} AS was_engaged_at_call1,
+    --{{ was_engaged_at_call('g.date_call2_end', 'cls_call2.group_status') }} AS was_engaged_at_call2,
+    --{{ was_engaged_at_call('g.date_call3_end', 'cls_call3.group_status') }} AS was_engaged_at_call3,
+    cls_call0.group_status as was_engage_at_call0,
+    cls_call1.group_status as was_engage_at_call1,
+    cls_call2.group_status as was_engage_at_call2,
+    cls_call3.group_status as was_engage_at_call3,
     f.call0_duration AS call_0_duration,
     f.call1_duration,
     f.call2_duration,
@@ -332,9 +348,15 @@ LEFT JOIN tags_a AS t5
 LEFT JOIN tags_a AS t6
     ON t6.family_id = cpf.family_id
     AND t6.tag_id = '877'
+-- Le tag 1071 - disengage-2appelsKO s'applique après une session de CALL
+-- pas juste après le call
 LEFT JOIN tags_a AS t7
     ON t7.family_id = cpf.family_id
     AND t7.tag_id = '1071'
+-- Le tag 1076 - accompagnement redemarré
+LEFT JOIN tags_a AS t8
+    ON t8.family_id = cpf.family_id
+    AND t8.tag_id = '1076'
 LEFT JOIN modules AS m2
     ON m2.id = f.module2_chosen_by_parents_id
 LEFT JOIN modules AS m3
@@ -347,3 +369,16 @@ LEFT JOIN modules AS m6
     ON m6.id = f.module6_chosen_by_parents_id
 LEFT JOIN list_of_tags AS lot
     ON lot.family_id = cpf.family_id
+-- Jointures avec child_life_status pour les différents appels
+LEFT JOIN cls AS cls_call0
+    ON cls_call0.item_id = yc.child_id
+    AND g.date_call1_start BETWEEN cls_call0.date_from AND cls_call0.date_to
+LEFT JOIN cls AS cls_call1
+    ON cls_call1.item_id = yc.child_id
+    AND g.date_call2_start BETWEEN cls_call1.date_from AND cls_call1.date_to
+LEFT JOIN cls AS cls_call2
+    ON cls_call2.item_id = yc.child_id
+    AND g.date_call3_start BETWEEN cls_call2.date_from AND cls_call2.date_to
+LEFT JOIN cls AS cls_call3
+    ON cls_call3.item_id = yc.child_id
+    AND g.date_call3_end +10 BETWEEN cls_call3.date_from AND cls_call3.date_to
