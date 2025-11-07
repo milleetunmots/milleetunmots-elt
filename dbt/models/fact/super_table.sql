@@ -280,7 +280,6 @@ SELECT distinct
     f.is_call3_status,
     {{ get_number_of_calls('f.is_call0_status', 'f.is_call1_status', 'f.is_call2_status', 'f.is_call3_status') }} AS number_of_calls,
     {{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
-    --{{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
     --{{ was_engaged_at_call('g.date_call0_end', 'cls_call0.group_status') }} AS was_engaged_at_call0,
     --{{ was_engaged_at_call('g.date_call1_end', 'cls_call1.group_status') }} AS was_engaged_at_call1,
     --{{ was_engaged_at_call('g.date_call2_end', 'cls_call2.group_status') }} AS was_engaged_at_call2,
