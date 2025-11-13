@@ -280,6 +280,11 @@ SELECT distinct
     f.is_call3_status,
     {{ get_number_of_calls('f.is_call0_status', 'f.is_call1_status', 'f.is_call2_status', 'f.is_call3_status') }} AS number_of_calls,
     {{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
+    case
+        when t8.date_created is not null and t7.date_created is not null then 1
+        when t8.date_created is null and t7.date_created is not null then 0
+        else null
+    end as is_restarted_after_disengaged,
     --{{ was_engaged_at_call('g.date_call0_end', 'cls_call0.group_status') }} AS was_engaged_at_call0,
     --{{ was_engaged_at_call('g.date_call1_end', 'cls_call1.group_status') }} AS was_engaged_at_call1,
     --{{ was_engaged_at_call('g.date_call2_end', 'cls_call2.group_status') }} AS was_engaged_at_call2,
@@ -381,3 +386,4 @@ LEFT JOIN cls AS cls_call2
 LEFT JOIN cls AS cls_call3
     ON cls_call3.item_id = yc.child_id
     AND g.date_call3_end +10 BETWEEN cls_call3.date_from AND cls_call3.date_to
+where (not g.is_excluded_from_analytics or g.is_excluded_from_analytics is null)
