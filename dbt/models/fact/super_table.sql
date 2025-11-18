@@ -48,7 +48,12 @@ child_parent_family AS (
     LEFT JOIN parents AS p2 ON p2.parent_id = c.parent2_id 
     LEFT JOIN child_supports AS cs ON c.family_id = cs.family_id
     LEFT JOIN admin_users AS au ON au.supporter_id = cs.supporter_id
+    left join dim.groups as g
+	on g.group_id = c.group_id
     WHERE c.date_discarded IS NULL
+    and (is_excluded_from_analytics = false 
+            or (is_excluded_from_analytics is null and c.group_status != 'not_supported'))
+    --WHERE c.date_discarded IS NULL
 ),
 
 -- CTE permettant de ne garder que l'enfant principal de la famille défini comme étant le plus jeune et des attributs de cet enfant
@@ -64,8 +69,11 @@ youngest_child AS (
         --Idee ?
         --g.date_ended_clean as group_end,
         ch.date_group_end as group_end,
+        ch.group_status as child_status,
         max_birthdate.number_of_children
     FROM children AS ch
+    left join groups
+        on ch.group_id = groups.group_id
     INNER JOIN (
         SELECT
             family_id, 
@@ -73,9 +81,19 @@ youngest_child AS (
             MAX(child_id) as youngest_child_id,
             COUNT(DISTINCT child_id) AS number_of_children
         FROM children
+        inner join groups as gr
+            on children.group_id = gr.group_id
+        where (gr.is_excluded_from_analytics = false 
+            or (gr.is_excluded_from_analytics is null and children.group_status != 'not_supported'))
+        and children.date_discarded is null
         GROUP BY family_id
     ) AS max_birthdate
-    ON max_birthdate.family_id = ch.family_id AND max_birthdate.youngest_child_birthdate = ch.date_birth
+    ON max_birthdate.family_id = ch.family_id 
+    AND max_birthdate.youngest_child_birthdate = ch.date_birth
+    where ch.date_discarded is null
+    --and max_birthdate.youngest_child_id = ch.child_id
+    --where (is_excluded_from_analytics = false 
+    --    or (is_excluded_from_analytics is null and ch.group_status != 'not_supported'))
 ),
 
 -- CTE permettant de récupérer des infos sur les parents
@@ -376,14 +394,15 @@ LEFT JOIN list_of_tags AS lot
 -- Jointures avec child_life_status pour les différents appels
 LEFT JOIN cls AS cls_call0
     ON cls_call0.item_id = yc.child_id
-    AND g.date_call1_start BETWEEN cls_call0.date_from AND cls_call0.date_to
+    AND g.date_call0_end + 8 >= cls_call0.date_from AND g.date_call0_end + 8 <cls_call0.date_to
 LEFT JOIN cls AS cls_call1
     ON cls_call1.item_id = yc.child_id
-    AND g.date_call2_start BETWEEN cls_call1.date_from AND cls_call1.date_to
+    AND g.date_call1_end + 8 >= cls_call1.date_from AND g.date_call1_end + 8 < cls_call1.date_to
 LEFT JOIN cls AS cls_call2
     ON cls_call2.item_id = yc.child_id
-    AND g.date_call3_start BETWEEN cls_call2.date_from AND cls_call2.date_to
+    AND g.date_call2_end + 8 >= cls_call2.date_from AND g.date_call2_end + 8 < cls_call2.date_to
 LEFT JOIN cls AS cls_call3
     ON cls_call3.item_id = yc.child_id
-    AND g.date_call3_end +10 BETWEEN cls_call3.date_from AND cls_call3.date_to
-where (not g.is_excluded_from_analytics or g.is_excluded_from_analytics is null)
+    AND g.date_call3_end + 8 >= cls_call3.date_from AND g.date_call3_end + 8 < cls_call3.date_to
+where (is_excluded_from_analytics = false 
+        or (is_excluded_from_analytics is null and yc.group_status != 'not_supported'))

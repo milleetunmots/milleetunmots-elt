@@ -116,8 +116,8 @@ child_lead as (
     from child_data cd 
     left join change_status cs
         on cd.child_id = cs.item_id
-    where is_excluded_from_analytics = false 
-        or is_excluded_from_analytics is null
+    where (is_excluded_from_analytics = false 
+        or (is_excluded_from_analytics is null and child_status != 'not_supported'))
 )
 
 select
