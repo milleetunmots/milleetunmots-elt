@@ -28,6 +28,7 @@ select
     letterbox_name::string as letterbox_name,
     degree::string as degree,
     mid_term_rate::integer as mid_term_rate,
-    mid_term_reaction::string as mid_term_reaction
+    mid_term_reaction::string as mid_term_reaction,
+    present_on_whatsapp::boolean as present_on_whatsapp
     --Ajouter les autres colonnes
 from source

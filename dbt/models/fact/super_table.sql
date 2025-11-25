@@ -405,4 +405,4 @@ LEFT JOIN cls AS cls_call3
     ON cls_call3.item_id = yc.child_id
     AND g.date_call3_end + 3 >= cls_call3.date_from AND g.date_call3_end + 3 < cls_call3.date_to
 where (is_excluded_from_analytics = false 
-        or (is_excluded_from_analytics is null and yc.group_status != 'not_supported'))
+        or (is_excluded_from_analytics is null))-- and yc.group_status != 'not_supported'))

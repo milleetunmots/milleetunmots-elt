@@ -43,6 +43,8 @@ models:
       schema: dim
     fact:
       schema: fact
+    stat:
+      schema: stat
     staging:
       schema: staging
     seed:

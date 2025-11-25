@@ -9,6 +9,7 @@ sources:
       - name: child_supports
       - name: children
       - name: children_sources
+      - name: events
       - name: groups
       - name: parents
       - name: sources
@@ -16,6 +17,7 @@ sources:
       - name: taggings
       - name: tags
       - name: versions
+      - name: workshops
 
   - name: seed
     database: MOTS_DW

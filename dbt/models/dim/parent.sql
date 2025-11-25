@@ -22,6 +22,7 @@ select
     job,
     letterbox_name,
     degree,
+    present_on_whatsapp,
     mid_term_rate,
     mid_term_reaction
 from p
