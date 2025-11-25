@@ -15,6 +15,7 @@ select
     ) as date_updated,
     user_role::string as user_role,
     is_disabled::boolean as is_disabled,
-    can_treat_task::boolean as can_treat_task
+    can_treat_task::boolean as can_treat_task,
+    aircall_phone_number::string as aircall_phone_number
     -- Ajouter les autres colonnes
 from source

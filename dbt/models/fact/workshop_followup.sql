@@ -23,6 +23,7 @@ select
     pe.accompagnante_email,
     pe.accompagnante_name,
     pe.accompagnante_role,
+    pe.accompagnante_aircall_phone_number,
     pe.children_names_and_ages,
     a.workshop_id,
     a.topic,

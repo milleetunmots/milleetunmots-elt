@@ -11,5 +11,6 @@ select
     date_updated,
     user_role,
     is_disabled,
-    can_treat_task
+    can_treat_task,
+    aircall_phone_number
 from source 

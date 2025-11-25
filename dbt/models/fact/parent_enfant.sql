@@ -14,7 +14,8 @@ au as (
 		email as supporter_email,
 		name as supporter_name,
 		user_role,
-		is_disabled
+		is_disabled,
+		aircall_phone_number
 	from {{ ref('admin_users') }}
 ),
 
@@ -55,9 +56,9 @@ c as (
         FROM {{ ref('child') }} as children
         inner join {{ ref('groups') }} as gr
             on children.group_id = gr.group_id
-        where (gr.is_excluded_from_analytics = false 
-            or (gr.is_excluded_from_analytics is null and children.group_status != 'not_supported'))
-        and children.date_discarded is null
+        --where (gr.is_excluded_from_analytics = false 
+        --    or (gr.is_excluded_from_analytics is null and children.group_status != 'not_supported'))
+        --and children.date_discarded is null
         GROUP BY family_id
     ) AS max_birthdate
     ON max_birthdate.family_id = ch.family_id 
@@ -79,7 +80,8 @@ select
 	au.supporter_email as accompagnante_email,
 	au.supporter_name as accompagnante_name,
 	au.user_role as accompagnante_role,
-    arrayagg(concat(lower(c.child_first_name), ' ', c.age_in_months, 'mois', ' (', c.date_birth, ')')) as children_names_and_ages
+    au.aircall_phone_number as accompagnante_aircall_phone_number,
+    arrayagg(concat(lower(c.child_first_name), ' ', c.age_in_months, 'mois', ' (', c.date_birth, ')')) within group (order by c.date_birth desc) as children_names_and_ages
 from p
 left join c
 	on p.parent_id = c.parent1_id
@@ -92,4 +94,4 @@ left join cs
 	on c1.child_support_id  = cs.child_support_id
 left join au
 	on cs.supporter_id = au.supporter_id
-group by 1,2,3,4,5,6,7,8,9
+group by 1,2,3,4,5,6,7,8,9,10
