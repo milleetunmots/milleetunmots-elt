@@ -394,15 +394,15 @@ LEFT JOIN list_of_tags AS lot
 -- Jointures avec child_life_status pour les différents appels
 LEFT JOIN cls AS cls_call0
     ON cls_call0.item_id = yc.child_id
-    AND g.date_call0_end + 8 >= cls_call0.date_from AND g.date_call0_end + 8 <cls_call0.date_to
+    AND g.date_call0_end + 3 >= cls_call0.date_from AND g.date_call0_end + 3 <cls_call0.date_to
 LEFT JOIN cls AS cls_call1
     ON cls_call1.item_id = yc.child_id
-    AND g.date_call1_end + 8 >= cls_call1.date_from AND g.date_call1_end + 8 < cls_call1.date_to
+    AND g.date_call1_end + 3 >= cls_call1.date_from AND g.date_call1_end + 3 < cls_call1.date_to
 LEFT JOIN cls AS cls_call2
     ON cls_call2.item_id = yc.child_id
-    AND g.date_call2_end + 8 >= cls_call2.date_from AND g.date_call2_end + 8 < cls_call2.date_to
+    AND g.date_call2_end + 3 >= cls_call2.date_from AND g.date_call2_end + 3 < cls_call2.date_to
 LEFT JOIN cls AS cls_call3
     ON cls_call3.item_id = yc.child_id
-    AND g.date_call3_end + 8 >= cls_call3.date_from AND g.date_call3_end + 8 < cls_call3.date_to
+    AND g.date_call3_end + 3 >= cls_call3.date_from AND g.date_call3_end + 3 < cls_call3.date_to
 where (is_excluded_from_analytics = false 
         or (is_excluded_from_analytics is null and yc.group_status != 'not_supported'))

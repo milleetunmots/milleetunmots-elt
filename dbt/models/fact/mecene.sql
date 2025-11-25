@@ -56,6 +56,28 @@ source as (
         on css.source_id = s.source_id
 ),
 
+-- CTEs pour les tags utilisant les tables staging
+tags AS (
+    SELECT * FROM {{ ref('stg_1001mots_app__tags') }}
+),
+
+taggings AS (
+    SELECT * FROM {{ ref('stg_1001mots_app__taggings') }}
+),
+
+-- CTE pour récupérer les tags par famille (taggable_type = 'Family')
+tags_a AS (
+    SELECT 
+        t.tag_id,
+        t.tag_name,
+        tg.taggable_id AS child_id,
+        tg.date_created
+    FROM taggings AS tg
+    INNER JOIN tags AS t
+        ON tg.tag_id = t.tag_id
+    WHERE tg.taggable_type = 'Child' AND tg.tag_id IN ('1085')
+),
+
 change_status as (
     select 
         item_id,
@@ -116,8 +138,12 @@ child_lead as (
     from child_data cd 
     left join change_status cs
         on cd.child_id = cs.item_id
-    where (is_excluded_from_analytics = false 
-        or (is_excluded_from_analytics is null and child_status != 'not_supported'))
+    left join tags_a as ta
+        on cd.child_id = ta.child_id
+    where is_excluded_from_analytics = false 
+        or (is_excluded_from_analytics is null and ta.tag_id is null)
+    --where (is_excluded_from_analytics = false 
+    --    or (is_excluded_from_analytics is null and child_status != 'not_supported'))
 )
 
 select
