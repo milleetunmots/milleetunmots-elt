@@ -202,7 +202,15 @@ SELECT DISTINCT
     {{ is_call0_ok_call1_ok_pm1_setup_call2_ko('cs') }} AS is_call0_ok_call1_ok_pm1_setup_call2_ko,
     {{ is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ok('cs') }} AS is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ok,
     {{ is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ko('cs') }} AS is_call0_ok_call1_ok_pm1_setup_call2_ok_pm1_ko,
-    {{ is_call0_ko_call1_ok_pm1_notsetup('cs') }} AS is_call0_ko_call1_ok_pm1_notsetup
+    {{ is_call0_ko_call1_ok_pm1_notsetup('cs') }} AS is_call0_ko_call1_ok_pm1_notsetup,
+
+    -- Ajout d'une métriue d'engagement
+    CASE 
+        WHEN cs.call0_status = 'OK' AND cs.call1_status = 'OK' AND ((cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried')) OR (cs.call2_previous_goals_follow_up IN ('1_succeed', '2_tried'))) THEN 1
+        WHEN cs.call0_status = 'OK' AND cs.call2_status = 'OK' AND ((cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried')) OR (cs.call2_previous_goals_follow_up IN ('1_succeed', '2_tried'))) THEN 1
+        WHEN cs.call1_status = 'OK' AND cs.call2_status = 'OK' AND ((cs.call1_previous_goals_follow_up IN ('1_succeed', '2_tried')) OR (cs.call2_previous_goals_follow_up IN ('1_succeed', '2_tried'))) THEN 1
+        ELSE 0 
+    END AS deux_appels_ok_plus_une_pm
 
 FROM child_parent_family AS cpf
 INNER JOIN youngest_child AS yc ON yc.child_id = cpf.child_id

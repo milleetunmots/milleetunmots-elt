@@ -98,6 +98,7 @@ change_status as (
 child_data as (
     select 
         c.child_id, 
+        c.gender,
         c.date_created,
         g.group_name,
         g.is_excluded_from_analytics,
@@ -118,6 +119,7 @@ child_data as (
 child_lead as (
     select 
         cd.child_id,
+        cd.gender,
         cd.group_name, 
         date(cd.date_created) as date_created,
         date(cd.date_started) as date_started, 
@@ -161,9 +163,11 @@ select
 
     -- main fields
     cl.child_id,
+    cl.gender,
     cpf.is_a_father,
     date_trunc('month', cpf.date_created) as month_of_registration,
     cpf.date_created as date_of_registration,
+    cl.child_status,
 
     -- age category
     child_age_in_month,

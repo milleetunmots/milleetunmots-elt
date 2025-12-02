@@ -76,6 +76,16 @@ select
 	--c.registration_source_details,
 	--c.age_in_months,
 	--c.child_support_id,
+    cs.child_support_id,
+    case c1.registration_source
+        when 'caf' then 'caf'
+        when 'pmi' then 'pmi'
+        when 'resubscribing' then 'Réinscription'
+        when 'friends' then 'Amis'
+        when 'other' then 'Autres'
+        else c1.registration_source
+    end as registration_source,
+    c1.registration_source_details,
 	g.group_name,
 	au.supporter_email as accompagnante_email,
 	au.supporter_name as accompagnante_name,
@@ -94,4 +104,4 @@ left join cs
 	on c1.child_support_id  = cs.child_support_id
 left join au
 	on cs.supporter_id = au.supporter_id
-group by 1,2,3,4,5,6,7,8,9,10
+group by 1,2,3,4,5,6,7,8,9,10,11,12,13

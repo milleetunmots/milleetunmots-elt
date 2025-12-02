@@ -48,7 +48,17 @@ cal as (
 
 select
 	w.workshop_id,
-	w.topic,
+	case w.topic
+        when 'games' then 'Jeux de recup'
+        when 'sleep' then 'Coucher'
+        when 'emotion' then 'Émotions'
+        when 'bath' then 'Bain / Habillage / Change'
+        when 'outside' then 'Sorties'
+        when 'meal' then 'Repas'
+        when 'books' then 'Livres'
+        when 'nursery_rhymes' then 'Comptines'
+        else w.topic
+    end as workshop_topic,
 	w.co_animator,
     cal.year as workshop_year,
     cal.month as workshop_month,
@@ -59,12 +69,19 @@ select
 	w.workshop_name,
 	w.workshop_land,
 	e.parent_response,
-	e.parent_presence,
+	case e.parent_presence
+        when 'present' then 'Présent'
+        when 'queue' then 'En attente'
+        when 'planned_absence' then 'Absence planifiée'
+        when 'not_planned_absence' then 'Absence non planifiée'
+        else e.parent_presence
+    end as parent_presence,
 	e.date_accepted,
 	e.related_id,
 	au.supporter_email as animator_email,
 	au.supporter_name as animator_name,
 	au.user_role as animator_role,
+    au.is_disabled as animator_is_disabled,
     case
         when w.date_discarded is not null then 'Annulé'
         when w.date_workshop < current_date then 'Passé'

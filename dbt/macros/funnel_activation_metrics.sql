@@ -18,7 +18,7 @@
 
 {% macro is_call_ko(call_status) %}
     CASE 
-        WHEN {{ call_status }} = 'KO' 
+        WHEN {{ call_status }} in ('KO', 'Ne pas appeler', 'Numéro erroné') 
         THEN 1 ELSE 0 
     END
 {% endmacro %}
@@ -32,7 +32,7 @@
 
 {% macro is_call_not_ko(call_status) %}
     CASE 
-        WHEN {{ call_status }} is null or {{ call_status }} != 'KO' 
+        WHEN {{ call_status }} is null or {{ call_status }} not in ('KO', 'Ne pas appeler', 'Numéro erroné') 
         THEN 1 ELSE 0 
     END
 {% endmacro %}
