@@ -21,6 +21,7 @@ e as (
         date_accepted,
 		date_created,
 		date_occurred,
+        date_updated,
 		body,
 		parent_response,
 		parent_presence
@@ -77,6 +78,7 @@ select
         else e.parent_presence
     end as parent_presence,
 	e.date_accepted,
+	e.date_updated,
 	e.related_id,
 	au.supporter_email as animator_email,
 	au.supporter_name as animator_name,

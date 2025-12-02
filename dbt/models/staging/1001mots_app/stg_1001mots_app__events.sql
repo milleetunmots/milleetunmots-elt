@@ -20,6 +20,9 @@ select
     to_date(
             nullif(discarded_at::string, '')
     ) as date_discarded,
+    to_timestamp(
+            nullif(updated_at::string, '')
+    ) as date_updated,
     body::string as body,
     parent_response::string as parent_response,
     parent_presence::string as parent_presence

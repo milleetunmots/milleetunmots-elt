@@ -6,6 +6,7 @@ sources:
     database: MOTS_DL
     tables:
       - name: admin_users
+      - name: aircall_calls
       - name: child_supports
       - name: children
       - name: children_sources
