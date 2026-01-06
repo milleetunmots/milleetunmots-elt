@@ -43,7 +43,8 @@ c as (
 		ch.last_name as child_last_name,
 		ch.family_id as child_support_id,
 		ch.group_id,
-		ch.registration_source,
+		-- Pas très clean, il faudra&it distinguer les 2
+		ch.registration_source_channel as registration_source,
 		ch.registration_source_details,
 		ch.ages as age_in_months,
         max_birthdate.youngest_child_id as youngest_child_id

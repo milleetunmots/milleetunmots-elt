@@ -1,19 +1,41 @@
 with c as (
     select *
     from {{ ref('stg_1001mots_app__children') }}
+),
+
+children_sources as (
+    select *
+    from {{ ref('stg_1001mots_app__children_sources') }}
+),
+
+sources as (
+    select *
+    from {{ ref('stg_1001mots_app__sources') }}
+),
+
+source as (
+    select 
+        css.child_id,
+        css.source_id,
+        s.name, 
+        s.channel, 
+        s.department
+    from children_sources css
+    inner join sources s
+        on css.source_id = s.source_id
 )
 
 select
-    child_id,
-    parent1_id,
-    parent2_id,
-    family_id,
-    group_id,
+    c.child_id,
+    c.parent1_id,
+    c.parent2_id,
+    c.family_id,
+    c.group_id,
     date_group_end,
-    first_name,
-    last_name,
+    c.first_name,
+    c.last_name,
     date_birth,
-    date_created,
+    c.date_created,
     (DATE_PART('year', CURRENT_DATE) - DATE_PART('year', date_birth)) * 12 + (DATE_PART('month', CURRENT_DATE) - DATE_PART('month', date_birth)) AS ages,
     (date_part('year', date_created) - date_part('year', date_birth)) * 12 + 
         (date_part('month', date_created) - date_part('month', date_birth)) as age_at_registration,
@@ -25,7 +47,12 @@ select
     should_contact_parent2,
     registration_source_details,
     registration_source,
+    source.name as registration_source_name,
+    source.channel as registration_source_channel,
+    source.department as registration_source_department,
     family_redirection_urls_count,
     family_redirection_url_visits_count,
     group_status
 from c
+left join source
+    on c.child_id = source.child_id

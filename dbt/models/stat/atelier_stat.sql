@@ -19,7 +19,16 @@ stat2 as (
         related_id,
         arrayagg(concat(workshop_city_name, '_', workshop_year, '_', workshop_month)) within group (order by date_workshop desc) as atelier_present
     from a
-    where parent_presence = 'present'
+    where parent_presence = 'Présent'
+    group by 1
+),
+
+stat2_topics as (
+    select
+        related_id,
+        arrayagg(workshop_topic) within group (order by date_workshop desc) as atelier_present_topics
+    from a
+    where parent_presence = 'Présent'
     group by 1
 ),
 
@@ -28,7 +37,7 @@ stat3 as (
         related_id,
         arrayagg(concat(workshop_city_name, '_', workshop_year, '_', workshop_month)) within group (order by date_workshop desc) as atelier_en_attente
     from a
-    where parent_presence = 'queue'
+    where parent_presence = 'En attente'
     group by 1
 ),
 
@@ -37,7 +46,7 @@ stat4 as (
         related_id,
         arrayagg(concat(workshop_city_name, '_', workshop_year, '_', workshop_month)) within group (order by date_workshop desc) as atelier_absence_planifiee
     from a
-    where parent_presence = 'planned_absence'
+    where parent_presence = 'Absence planifiée'
     group by 1
 ),
 
@@ -46,7 +55,7 @@ stat5 as (
         related_id,
         arrayagg(concat(workshop_city_name, '_', workshop_year, '_', workshop_month)) within group (order by date_workshop desc) as atelier_absence_non_planifiee
     from a
-    where parent_presence = 'not_planned_absence'
+    where parent_presence = 'Absence non planifiée'
     group by 1
 ),
 
@@ -64,6 +73,7 @@ select
     stat1.related_id,
     stat1.atelier_inscrit,
     stat2.atelier_present,
+    stat2_topics.atelier_present_topics,
     stat3.atelier_en_attente,
     stat4.atelier_absence_planifiee,
     stat5.atelier_absence_non_planifiee,
@@ -79,3 +89,5 @@ left join stat5
     on stat1.related_id = stat5.related_id
 left join stat6
     on stat1.related_id = stat6.related_id
+left join stat2_topics
+    on stat1.related_id = stat2_topics.related_id

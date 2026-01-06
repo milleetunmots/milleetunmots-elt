@@ -18,7 +18,7 @@ select
     concat(lower(pe.parent_first_name), ' ', lower(pe.parent_last_name)) as parent_name,
     pe.phone_number,
     concat(lower(pe.parent_first_name), ' ', lower(pe.parent_last_name), ' (', pe.phone_number, ')') as parent_name_and_phone,
-    pe.present_on_whatsapp,
+    iff(pe.present_on_whatsapp, 'Oui', 'Non') as present_on_whatsapp,
     pe.group_name,
     concat('https://app.1001mots.org/admin/child_supports/', pe.child_support_id) as child_support_url,
     pe.registration_source,
@@ -49,6 +49,7 @@ select
     a.animator_role,
     ast.atelier_inscrit,
     ast.atelier_present,
+    ast.atelier_present_topics,
     ast.atelier_en_attente,
     ast.atelier_absence_planifiee,
     ast.atelier_absence_non_planifiee,
@@ -60,4 +61,4 @@ left join ast
     on pe.parent_id = ast.related_id
 where workshop_id is not null
 and a.animator_role = 'animator'
-and not a.animator_is_disabled
+--and not a.animator_is_disabled
