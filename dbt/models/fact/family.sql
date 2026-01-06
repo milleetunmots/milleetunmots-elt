@@ -33,6 +33,7 @@ select
     cs.family_id,
     au.supporter_id,
     g.group_name,
+    --has a father aurait été mieux ?!
     case 
         when p1.gender = 'm' then 1
         when p2.gender = 'm' then 1 

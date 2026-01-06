@@ -165,6 +165,8 @@ select
     cl.child_id,
     cl.gender,
     cpf.is_a_father,
+    iff(p.gender ='m', 1, 0) + iff(p2.gender ='m', 1, 0) as nb_father,
+    iff(p.gender ='f', 1, 0) + iff(p2.gender ='f', 1, 0) as nb_mother,
     date_trunc('month', cpf.date_created) as month_of_registration,
     cpf.date_created as date_of_registration,
     cl.child_status,
@@ -197,3 +199,5 @@ left join child_parent_family cpf
     on cpf.child_id = cl.child_id
 left join parents p 
     on p.parent_id = cpf.parent1_id
+left join parents p2 
+    on p2.parent_id = cpf.parent2_id
