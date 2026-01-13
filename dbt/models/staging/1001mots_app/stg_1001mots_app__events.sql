@@ -25,5 +25,6 @@ select
     ) as date_updated,
     body::string as body,
     parent_response::string as parent_response,
-    parent_presence::string as parent_presence
+    parent_presence::string as parent_presence,
+    workshop_time_slot::string as workshop_time_slot
 from source

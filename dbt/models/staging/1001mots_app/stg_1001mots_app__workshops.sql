@@ -23,5 +23,7 @@ select
 	co_animator::string as co_animator,
 	animator_id::int as animator_id,
     postal_code::string as postal_code,
-    city_name::string as city_name
+    city_name::string as city_name,
+    first_workshop_time_slot::string as first_workshop_time_slot,
+    second_workshop_time_slot::string as second_workshop_time_slot
 from source

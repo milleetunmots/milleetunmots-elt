@@ -33,6 +33,9 @@ cs as (
 	from {{ ref('stg_1001mots_app__child_supports') }}
 ),
 
+
+-- Certains enfants ont le même parent mais pas le même child support id
+-- Ce qui peut prêter à confusion
 c as (
 	select
 		ch.child_id,
@@ -43,17 +46,17 @@ c as (
 		ch.last_name as child_last_name,
 		ch.family_id as child_support_id,
 		ch.group_id,
-		-- Pas très clean, il faudra&it distinguer les 2
+		-- Pas très clean, il faudrait distinguer les 2
 		ch.registration_source_channel as registration_source,
 		ch.registration_source_details,
 		ch.ages as age_in_months,
-        max_birthdate.youngest_child_id as youngest_child_id
+        ch1.child_id as youngest_child_id
 	from {{ ref('child') }} as ch
     inner join (
         SELECT
             family_id, 
-            MAX(date_birth) AS youngest_child_birthdate,
-            MAX(child_id) as youngest_child_id
+            MAX(date_birth) AS youngest_child_birthdate--,
+            --MAX(child_id) as youngest_child_id
         FROM {{ ref('child') }} as children
         inner join {{ ref('groups') }} as gr
             on children.group_id = gr.group_id
@@ -62,9 +65,16 @@ c as (
         --and children.date_discarded is null
         GROUP BY family_id
     ) AS max_birthdate
-    ON max_birthdate.family_id = ch.family_id 
+    ON max_birthdate.family_id = ch.family_id
+	left join {{ ref('child') }} as ch1
+    	on max_birthdate.youngest_child_birthdate = ch1.date_birth
+		and max_birthdate.family_id = ch1.family_id
 )
 
+-- Point d'attention, pour les parents inscrits depuis longtemps, on avait auparavant
+-- des fiches de suivi différentes pour les enfants donc il y a plusieurs lignes avec le même parent
+-- On a donc choisi de prendre le minimum des fiches de suivi pour éviter les doublons
+-- Exemple parent 9090
 select
 	p.parent_id,
 	p.parent_first_name,
@@ -77,7 +87,6 @@ select
 	--c.registration_source_details,
 	--c.age_in_months,
 	--c.child_support_id,
-    cs.child_support_id,
     case c1.registration_source
         when 'caf' then 'caf'
         when 'pmi' then 'pmi'
@@ -92,6 +101,7 @@ select
 	au.supporter_name as accompagnante_name,
 	au.user_role as accompagnante_role,
     au.aircall_phone_number as accompagnante_aircall_phone_number,
+	min(cs.child_support_id) as child_support_id,
     arrayagg(concat(lower(c.child_first_name), ' ', c.age_in_months, 'mois', ' (', c.date_birth, ')')) within group (order by c.date_birth desc) as children_names_and_ages
 from p
 left join c
@@ -105,4 +115,4 @@ left join cs
 	on c1.child_support_id  = cs.child_support_id
 left join au
 	on cs.supporter_id = au.supporter_id
-group by 1,2,3,4,5,6,7,8,9,10,11,12,13
+group by 1,2,3,4,5,6,7,8,9,10,11,12
