@@ -34,6 +34,9 @@ cs as (
 ),
 
 
+-- Grouper au niveau des parents et non au niveau des fiches de suivis
+-- LOgique spécifique
+
 -- Certains enfants ont le même parent mais pas le même child support id
 -- Ce qui peut prêter à confusion
 c as (
