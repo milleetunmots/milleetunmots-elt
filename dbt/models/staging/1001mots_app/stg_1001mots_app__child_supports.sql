@@ -67,7 +67,8 @@ select
     coalesce(object_json:module3_chosen_by_parents_id::integer, source.module3_chosen_by_parents_id::integer) as module3_chosen_by_parents_id,
     coalesce(object_json:module4_chosen_by_parents_id::integer, source.module4_chosen_by_parents_id::integer) as module4_chosen_by_parents_id,
     coalesce(object_json:module5_chosen_by_parents_id::integer, source.module5_chosen_by_parents_id::integer) as module5_chosen_by_parents_id,
-    coalesce(object_json:module6_chosen_by_parents_id::integer, source.module6_chosen_by_parents_id::integer) as module6_chosen_by_parents_id
+    coalesce(object_json:module6_chosen_by_parents_id::integer, source.module6_chosen_by_parents_id::integer) as module6_chosen_by_parents_id,
+    nullif(replace(notes::string, ' ', ''), '') as notes
 from source
 left join source2
     on source.id = source2.item_id

@@ -84,6 +84,7 @@ select
 	p.parent_last_name,
 	p.phone_number,
 	p.present_on_whatsapp,
+	c.youngest_child_id,
 	--c.child_first_name,
 	--c.child_Last_name,
 	--c.registration_source,
@@ -118,4 +119,4 @@ left join cs
 	on c1.child_support_id  = cs.child_support_id
 left join au
 	on cs.supporter_id = au.supporter_id
-group by 1,2,3,4,5,6,7,8,9,10,11,12
+group by 1,2,3,4,5,6,7,8,9,10,11,12,13

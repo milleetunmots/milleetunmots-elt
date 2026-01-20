@@ -13,8 +13,9 @@ ast as (
     from {{ ref('atelier_stat') }}
 )
 
-select
+select distinct
     pe.parent_id,
+    a.family_id,
     concat(lower(pe.parent_first_name), ' ', lower(pe.parent_last_name)) as parent_name,
     pe.phone_number,
     concat(lower(pe.parent_first_name), ' ', lower(pe.parent_last_name), ' (', pe.phone_number, ')') as parent_name_and_phone,
@@ -38,7 +39,7 @@ select
     a.workshop_postal_code,
     a.workshop_city_name,
     a.workshop_name,
-    concat(a.workshop_name, ' (', a.time_slot, ')') as workshop_name_and_time_slot,
+    concat(a.workshop_name, ' (', coalesce(a.time_slot, 'seul horaire'), ')') as workshop_name_and_time_slot,
     a.time_slot,
     a.workshop_land,
     a.workshop_status,

@@ -8,7 +8,9 @@ sources:
       - name: admin_users
       - name: aircall_calls
       - name: aircall_messages
+      - name: books
       - name: child_supports
+      - name: children_support_modules
       - name: children
       - name: children_sources
       - name: events
