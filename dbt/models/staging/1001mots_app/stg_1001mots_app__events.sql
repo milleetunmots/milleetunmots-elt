@@ -27,5 +27,8 @@ select
     type::string as type,
     parent_response::string as parent_response,
     parent_presence::string as parent_presence,
-    workshop_time_slot::string as workshop_time_slot
+    workshop_time_slot::string as workshop_time_slot,
+    originated_by_app::boolean as originated_by_app,
+    spot_hit_status::string as spot_hit_status,
+    spot_hit_message_id::string as spot_hit_message_id
 from source
