@@ -1,6 +1,7 @@
 with p as (
 	select
 		parent_id,
+		follow_us_on_whatsapp,
 		first_name as parent_first_name,
 		last_name as parent_last_name,
 		phone_number,
@@ -83,6 +84,7 @@ select
 	p.parent_first_name,
 	p.parent_last_name,
 	p.phone_number,
+	p.follow_us_on_whatsapp,
 	p.present_on_whatsapp,
 	c.youngest_child_id,
 	--c.child_first_name,
@@ -119,4 +121,4 @@ left join cs
 	on c1.child_support_id  = cs.child_support_id
 left join au
 	on cs.supporter_id = au.supporter_id
-group by 1,2,3,4,5,6,7,8,9,10,11,12,13
+group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14

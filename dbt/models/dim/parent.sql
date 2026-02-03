@@ -9,6 +9,7 @@ select
     first_name,
     last_name,
     email,
+    follow_us_on_whatsapp,
     phone_number,
     phone_number_national,
     address,

@@ -24,6 +24,15 @@ select
 	animator_id::int as animator_id,
     postal_code::string as postal_code,
     city_name::string as city_name,
-    first_workshop_time_slot::string as first_workshop_time_slot,
-    second_workshop_time_slot::string as second_workshop_time_slot
+    TO_VARCHAR(
+        CONVERT_TIMEZONE('UTC', 'Europe/Paris', 
+            TO_TIMESTAMP(date_workshop::DATE || ' ' || first_workshop_time_slot)
+        ), 
+    'HH24:MI:SS')::string AS first_workshop_time_slot,
+    TO_VARCHAR(
+        CONVERT_TIMEZONE('UTC', 'Europe/Paris', 
+            TO_TIMESTAMP(date_workshop::DATE || ' ' || second_workshop_time_slot)
+        ), 
+    'HH24:MI:SS')::string AS second_workshop_time_slot
+    --second_workshop_time_slot::string as second_workshop_time_slot
 from source
