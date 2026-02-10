@@ -146,7 +146,9 @@ families AS (
         call0_review,
         call1_review,
         call2_review,
-        call3_review
+        call3_review,
+        stop_support_reason,
+        date_stop_support
     FROM child_supports
 ),
 
@@ -173,11 +175,27 @@ tags_a AS (
         t.tag_id,
         t.tag_name,
         tg.taggable_id AS family_id,
-        tg.date_created
+        max(tg.date_created) as date_created
     FROM taggings AS tg
-    INNER JOIN tags AS t
-        ON tg.tag_id = t.tag_id
-    WHERE tg.taggable_type = 'ChildSupport' AND tg.tag_id IN ('876','874','901','900','893','900','1071', '1076')
+        INNER JOIN tags AS t
+            ON tg.tag_id = t.tag_id
+        WHERE tg.taggable_type = 'ChildSupport' AND tg.tag_id IN ('876','874','901','900','893','900','1071', '1076')
+    group by 1,2,3
+),
+
+
+-- CTE pour récupérer les tags associés à l'arrêt accompagnante
+tags_aa AS (
+    SELECT 
+        t.tag_id,
+        t.tag_name,
+        tg.taggable_id AS family_id,
+        max(tg.date_created) as date_created
+    FROM taggings AS tg
+        INNER JOIN tags AS t
+            ON tg.tag_id = t.tag_id
+        WHERE tg.taggable_type = 'ChildSupport' AND tg.tag_id IN ('1015', '1017', '1019', '1046','1065','1099','1101','1103')
+    group by 1,2,3
 ),
 
 -- CTE pour créer une liste de tags par famille
@@ -297,12 +315,19 @@ SELECT distinct
     f.is_call2_status,
     f.is_call3_status,
     {{ get_number_of_calls('f.is_call0_status', 'f.is_call1_status', 'f.is_call2_status', 'f.is_call3_status') }} AS number_of_calls,
-    {{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
+    {{ get_call_number_when_disengaged('t7.date_created', 'g.date_call0_end', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
     case
         when t8.date_created is not null and t7.date_created is not null then 1
         when t8.date_created is null and t7.date_created is not null then 0
         else null
     end as is_restarted_after_disengaged,
+
+
+    -- Arrêt accompagnante
+    f.stop_support_reason,
+    {{ get_call_number_when_disengaged('f.date_stop_support', 'g.date_call0_end', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged_stop_support,
+
+
     --{{ was_engaged_at_call('g.date_call0_end', 'cls_call0.group_status') }} AS was_engaged_at_call0,
     --{{ was_engaged_at_call('g.date_call1_end', 'cls_call1.group_status') }} AS was_engaged_at_call1,
     --{{ was_engaged_at_call('g.date_call2_end', 'cls_call2.group_status') }} AS was_engaged_at_call2,

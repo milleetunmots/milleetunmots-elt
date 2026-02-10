@@ -112,12 +112,13 @@ select
     base.family_id,
     base.is_call_goals,
     max(ac.duration) as max_duration,
-    max(ac.duration) > 250 as is_real_call,
+    max(ac.duration) > 400 as is_real_call,
     sum(case when ac.direction = 'outbound' then 1 else 0 end) as nb_of_calls_sent,
     sum(case when ac.direction = 'inbound' then 1 else 0 end) as nb_of_calls_received,
-    sum(case when ac.duration > 250 and ac.direction = 'outbound' then 1 else 0 end) as nb_of_real_calls_sent,
-    sum(case when ac.duration > 250 and ac.direction = 'inbound' then 1 else 0 end) as nb_of_real_calls_received,
-    count(distinct am.call_id) as nb_of_messages_sent
+    sum(case when ac.direction = 'inbound' and ac.answered = true then 1 else 0 end) as nb_of_calls_received_answered,
+    sum(case when ac.duration > 400 and ac.direction = 'outbound' then 1 else 0 end) as nb_of_real_calls_sent,
+    sum(case when ac.duration > 400 and ac.direction = 'inbound' then 1 else 0 end) as nb_of_real_calls_received--,
+    --count(distinct am.call_id) as nb_of_messages_sent
 from base
 left join g_base
     on base.cohort_name = g_base.group_name
@@ -125,11 +126,12 @@ left join g_base
 left join ac
     on ac.date_started between g_base.started_at and g_base.ended_at
     and base.family_id = ac.child_support_id
-left join am
-    on am.date_created between g_base.started_at - 2 and g_base.ended_at
-    and base.family_id = am.child_support_id
+--left join am
+--    on am.date_created between g_base.started_at - 2 and g_base.ended_at
+--    and base.family_id = am.child_support_id
 where not is_excluded_from_analytics
 and g_base.ended_at <= current_date
+and ac.duration > 2
 group by 1,2,3,4,5,6
 )
 
