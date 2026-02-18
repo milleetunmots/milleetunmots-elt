@@ -23,6 +23,7 @@ select
 	co_animator::string as co_animator,
 	animator_id::int as animator_id,
     postal_code::string as postal_code,
+    location::string as location,
     city_name::string as city_name,
     TO_VARCHAR(
         CONVERT_TIMEZONE('UTC', 'Europe/Paris', 

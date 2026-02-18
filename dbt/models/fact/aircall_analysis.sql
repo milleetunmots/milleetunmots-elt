@@ -137,7 +137,9 @@ group by 1,2,3,4,5,6
 
 select
     final.*,
-    ac.call_id
+    ac.call_id,
+    ac.date_started as date_call_started,
+    row_number() over (partition by final.family_id, final.call_session order by ac.date_started) as call_number
 from final
 left join g_base
     on final.cohort_name = g_base.group_name
@@ -146,3 +148,4 @@ left join ac
     on final.family_id = ac.child_support_id
     and final.max_duration = ac.duration
     and ac.date_started between g_base.started_at and g_base.ended_at
+qualify call_number = 1
