@@ -2,6 +2,7 @@ with events as (
     select *
     from {{ ref('stg_1001mots_app__events') }}
     where type = 'Events::TextMessage'
+    and spot_hit_status in ('1','2')
 ),
 
 pe as (

@@ -53,3 +53,5 @@ models:
       schema: tests
     old:
       schema: old
+    external_share:
+      schema: external_share

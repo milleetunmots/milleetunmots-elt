@@ -163,6 +163,7 @@ select
 
     -- main fields
     cl.child_id,
+    cl.date_started as date_cohort_started,
     cl.gender,
     cpf.is_a_father,
     iff(p.gender ='m', 1, 0) + iff(p2.gender ='m', 1, 0) as nb_father,
@@ -170,6 +171,10 @@ select
     date_trunc('month', cpf.date_created) as month_of_registration,
     cpf.date_created as date_of_registration,
     cl.child_status,
+    CASE 
+        WHEN source_channel = 'pmi' THEN concat('CD ', p.departement)
+        ELSE source_name
+    END as source_compta_analytique,
 
     -- age category
     child_age_in_month,
