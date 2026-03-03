@@ -6,5 +6,5 @@ with m as (
 select
     *
 from m
-where date_cohort_started >= current_date - interval '180 days'
+where date_cohort_started between current_date - interval '180 days' and current_date
 and child_status in ('active')
