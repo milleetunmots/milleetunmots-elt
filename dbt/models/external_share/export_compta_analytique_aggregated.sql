@@ -15,11 +15,11 @@ order by 2 desc
 final2 as (
 select
     source_compta_analytique,
-    nb_children/sum(nb_children) over () as ratio
+    round(nb_children/sum(nb_children) over (), 3) as ratio
 from final
 order by 2 desc
 )
 
 select *
 from final2
-order by 2 desc
+order by ratio desc
