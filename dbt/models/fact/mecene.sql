@@ -65,6 +65,28 @@ taggings AS (
     SELECT * FROM {{ ref('stg_1001mots_app__taggings') }}
 ),
 
+child_tags AS (
+    SELECT
+        tg.taggable_id AS child_id,
+        LISTAGG(t.tag_name, ',') WITHIN GROUP (ORDER BY t.tag_name) AS child_tag_list
+    FROM taggings AS tg
+    INNER JOIN tags AS t
+        ON tg.tag_id = t.tag_id
+    WHERE tg.taggable_type = 'Child'
+    GROUP BY tg.taggable_id
+),
+
+child_support_tags AS (
+    SELECT
+        tg.taggable_id AS family_id,
+        LISTAGG(t.tag_name, ',') WITHIN GROUP (ORDER BY t.tag_name) AS child_support_tag_list
+    FROM taggings AS tg
+    INNER JOIN tags AS t
+        ON tg.tag_id = t.tag_id
+    WHERE tg.taggable_type = 'ChildSupport'
+    GROUP BY tg.taggable_id
+),
+
 -- CTE pour récupérer les tags par famille (taggable_type = 'Family')
 tags_a AS (
     SELECT 
@@ -163,6 +185,8 @@ select
 
     -- main fields
     cl.child_id,
+    ct.child_tag_list,
+    cst.child_support_tag_list,
     cl.date_started as date_cohort_started,
     cl.gender,
     cpf.is_a_father,
@@ -206,3 +230,7 @@ left join parents p
     on p.parent_id = cpf.parent1_id
 left join parents p2 
     on p2.parent_id = cpf.parent2_id
+left join child_tags ct
+    on ct.child_id = cl.child_id
+left join child_support_tags cst
+    on cst.family_id = cpf.family_id
