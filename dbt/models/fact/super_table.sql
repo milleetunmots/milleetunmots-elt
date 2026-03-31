@@ -200,14 +200,26 @@ tags_aa AS (
 
 -- CTE pour créer une liste de tags par famille
 list_of_tags AS (
-    SELECT 
+    SELECT
         taggings.taggable_id AS family_id,
         LISTAGG(tags.tag_name, ',') within group(order by tags.tag_name) as tag_list
-    FROM taggings 
+    FROM taggings
     INNER JOIN tags AS tags
         ON tags.tag_id = taggings.tag_id
     WHERE taggings.taggable_type = 'ChildSupport'
     group by 1
+),
+
+-- CTE pour créer une liste de tags par enfant
+child_tags AS (
+    SELECT
+        tg.taggable_id AS child_id,
+        LISTAGG(t.tag_name, ',') WITHIN GROUP (ORDER BY t.tag_name) AS child_tag_list
+    FROM taggings AS tg
+    INNER JOIN tags AS t
+        ON tg.tag_id = t.tag_id
+    WHERE tg.taggable_type = 'Child'
+    GROUP BY tg.taggable_id
 ),
 
 -- CTE permettant de récupérer le nom des groupes
@@ -358,6 +370,7 @@ SELECT distinct
     {{ get_is_bilingual('is_bilingual') }} AS is_bilingue,
     {{ get_registration_delay('g.started_at', 'f.created_at') }} AS registration_delay,
     {{ get_age_at_registration('f.created_at', 'yc.birthdate') }} AS age_at_registration,
+    ct.child_tag_list,
     array_sort(strtok_to_array(lot.tag_list, ',')) as tag_list,
     g.is_excluded_from_analytics,
     (f.call0_status = 'OK' OR f.call1_status = 'OK') as is_call_0_1_status_OK
@@ -416,6 +429,8 @@ LEFT JOIN modules AS m6
     ON m6.id = f.module6_chosen_by_parents_id
 LEFT JOIN list_of_tags AS lot
     ON lot.family_id = cpf.family_id
+LEFT JOIN child_tags AS ct
+    ON ct.child_id = yc.child_id
 -- Jointures avec child_life_status pour les différents appels
 LEFT JOIN cls AS cls_call0
     ON cls_call0.item_id = yc.child_id

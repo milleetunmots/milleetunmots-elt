@@ -178,6 +178,7 @@ select
     -- filters
     s.channel as source_channel,
     s.name as source_name,
+    s.department as source_department,
     p.postal_code as family_postal_code,
     p.city_name as family_city,
     date_trunc('year', cpf.date_created) as year_of_registration,
@@ -195,7 +196,8 @@ select
     date_trunc('month', cpf.date_created) as month_of_registration,
     cpf.date_created as date_of_registration,
     cl.child_status,
-    CASE 
+    cl.child_status != 'not_supported' as is_accompanied,
+    CASE
         WHEN source_channel = 'pmi' THEN concat('CD ', p.departement)
         ELSE source_name
     END as source_compta_analytique,
