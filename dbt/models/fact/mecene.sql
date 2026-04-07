@@ -178,11 +178,12 @@ select
     -- filters
     s.channel as source_channel,
     s.name as source_name,
-    s.department as source_department,
+    LPAD(TRIM(s.department), 2, '0') as source_department,
     p.postal_code as family_postal_code,
     p.city_name as family_city,
     date_trunc('year', cpf.date_created) as year_of_registration,
     p.departement,
+    concat(COALESCE(p.departement, ''), '_', COALESCE(LPAD(TRIM(s.department), 2, '0'), '')) as source_or_family_department,
 
     -- main fields
     cl.child_id,

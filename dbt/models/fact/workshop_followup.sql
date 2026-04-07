@@ -66,4 +66,7 @@ left join ast
     on pe.parent_id = ast.related_id
 where workshop_id is not null
 and a.animator_role = 'animator'
+--and coalesce(a.parent_response, '') != 'Non'
+-- Remove the workshops that have been discarded
+and date_discarded is null
 --and not a.animator_is_disabled
