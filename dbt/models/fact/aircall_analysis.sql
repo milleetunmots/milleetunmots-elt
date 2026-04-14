@@ -13,6 +13,16 @@ g as (
     from {{ ref('groups') }}
 ),
 
+at as (
+    select *
+    from {{ ref('analyse_transcript') }}
+),
+
+asup as (
+    select *
+    from {{ ref('analyse_supervision') }}
+),
+
 st as (
     select *
     from {{ ref('super_table') }}
@@ -139,6 +149,16 @@ select
     final.*,
     ac.call_id,
     ac.date_started as date_call_started,
+    ac.asset_url,
+    at.appel_entier,
+    at.accord_parent,
+    at.pm_presente,
+    at.pm_question_posee,
+    at.pm_co_construite,
+    at.pm_idee_accompagnante,
+    at.pm_liee_sujet_parent,
+    at.pm_pratiques_creusees,
+    asup.niveau_appel,
     row_number() over (partition by final.family_id, final.call_session order by ac.date_started) as call_number
 from final
 left join g_base
@@ -148,4 +168,8 @@ left join ac
     on final.family_id = ac.child_support_id
     and final.max_duration = ac.duration
     and ac.date_started between g_base.started_at and g_base.ended_at
+left join at
+    on ac.call_id = at.call_id
+left join asup
+    on ac.call_id = asup.call_id
 qualify call_number = 1
