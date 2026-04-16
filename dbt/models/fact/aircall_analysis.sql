@@ -20,7 +20,7 @@ at as (
 
 asup as (
     select *
-    from {{ ref('analyse_supervision') }}
+    from {{ source('seed', 'analyse_supervision') }}
 ),
 
 st as (

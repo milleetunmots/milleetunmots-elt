@@ -27,6 +27,7 @@ sources:
     database: MOTS_DW
     tables:
       - name: analyse_transcript
+      - name: analyse_supervision
       - name: benchmark_mecene
       - name: suivi_activite
       - name: seed_super_table
