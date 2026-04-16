@@ -15,7 +15,7 @@ g as (
 
 at as (
     select *
-    from {{ ref('analyse_transcript') }}
+    from {{ source('seed', 'analyse_transcript') }}
 ),
 
 asup as (
