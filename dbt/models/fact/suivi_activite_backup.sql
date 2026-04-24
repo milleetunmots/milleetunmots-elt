@@ -1,12 +1,28 @@
-WITH child_family AS (
+WITH children AS (
+    SELECT * FROM {{ source('mots_app', 'children') }}
+),
 
-SELECT 
-cs.id AS family_id, 
-MAX(c.id) AS child_id, 
-MAX(c.group_id) AS group_id 
+child_supports AS (
+    SELECT * FROM {{ source('mots_app', 'child_supports') }}
+),
+
+groups AS (
+    SELECT * FROM {{ source('mots_app', 'groups') }}
+),
+
+admin_users AS (
+    SELECT * FROM {{ source('mots_app', 'admin_users') }}
+),
+
+child_family AS (
+
+SELECT
+cs.id AS family_id,
+MAX(c.id) AS child_id,
+MAX(c.group_id) AS group_id
 FROM children AS c
 LEFT JOIN child_supports AS cs ON c.child_support_id = cs.id
-GROUP BY 1 
+GROUP BY 1
 ),
 
 

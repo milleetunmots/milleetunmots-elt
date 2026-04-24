@@ -279,7 +279,7 @@ SELECT distinct
     f.is_call2_status,
     f.is_call3_status,
     {{ get_number_of_calls('f.is_call0_status', 'f.is_call1_status', 'f.is_call2_status', 'f.is_call3_status') }} AS number_of_calls,
-    {{ get_call_number_when_disengaged('t7.date_created', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
+    {{ get_call_number_when_disengaged('t7.date_created', 'g.date_call0_end', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged,
     case
         when t8.date_created is not null and t7.date_created is not null then 1
         when t8.date_created is null and t7.date_created is not null then 0

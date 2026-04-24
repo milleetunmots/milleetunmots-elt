@@ -46,7 +46,7 @@ child_parent_family AS (
         cs.id AS family_id,
         au.id AS supporter_id,
         p1.postal_code,
-        array_remove(array_agg(distinct cast(t1.name as varchar)) ||array_agg( distinct cast(t2.name as varchar)), NULL) as tag_name
+        array_remove(ARRAY_CAT(array_agg(distinct cast(t1.name as varchar)), array_agg(distinct cast(t2.name as varchar))), NULL) as tag_name
     FROM children AS c
     LEFT JOIN parents AS p1 ON p1.id = c.parent1_id 
     LEFT JOIN parents AS p2 ON p2.id = c.parent2_id 
