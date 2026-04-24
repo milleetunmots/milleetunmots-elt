@@ -7,3 +7,11 @@ seeds/
 dbt/profiles.yml
 .user.yml
 package-lock.yml
+.DS_Store
+
+# GLiNER
+gliner_model.zip
+gliner_model/
+admin/upload_gliner_to_snowflake.py
+admin/anonymize_transcripts.py
+admin/Test/
