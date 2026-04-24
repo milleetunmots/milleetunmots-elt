@@ -23,6 +23,12 @@ sources:
       - name: versions
       - name: workshops
 
+  - name: fact_anonymised
+    database: MOTS_DW
+    schema: FACT
+    tables:
+      - name: super_table_anonymised
+
   - name: seed
     database: MOTS_DW
     tables:
