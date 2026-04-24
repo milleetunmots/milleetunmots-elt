@@ -33,6 +33,7 @@ select
     coalesce(object_json:call0_review::string, source.call0_review::string) as call0_review,
     coalesce(object_json:call0_goals_sms::string, source.call0_goals_sms::string) as call0_goals_sms,
     coalesce(nullif(object_json:call0_goals::string, ''), source.call0_goals::string) as call0_goals,
+    coalesce(object_json:call0_sendings_benefits_details::string, source.call0_sendings_benefits_details::string) as call0_sendings_benefits_details,
     -- Call 1 fields
     coalesce(object_json:call1_attempt::string, source.call1_attempt::string) as call1_attempt,
     coalesce(object_json:call1_duration::integer, source.call1_duration::integer) as call1_duration,
@@ -40,6 +41,7 @@ select
     coalesce(object_json:call1_review::string, source.call1_review::string) as call1_review,
     coalesce(object_json:call1_goals_sms::string, source.call1_goals_sms::string) as call1_goals_sms,
     coalesce(nullif(object_json:call1_goals::string, ''), source.call1_goals::string) as call1_goals,
+    coalesce(object_json:call1_sendings_benefits_details::string, source.call1_sendings_benefits_details::string) as call1_sendings_benefits_details,
     coalesce(object_json:call1_previous_goals_follow_up::string, source.call1_previous_goals_follow_up::string) as call1_previous_goals_follow_up,
     -- Call 2 fields
     coalesce(object_json:call2_attempt::string, source.call2_attempt::string) as call2_attempt,
@@ -48,6 +50,7 @@ select
     coalesce(object_json:call2_review::string, source.call2_review::string) as call2_review,
     coalesce(object_json:call2_goals_sms::string, source.call2_goals_sms::string) as call2_goals_sms,
     coalesce(nullif(object_json:call2_goals::string, ''), source.call2_goals::string) as call2_goals,
+    coalesce(object_json:call2_sendings_benefits_details::string, source.call2_sendings_benefits_details::string) as call2_sendings_benefits_details,
     coalesce(object_json:call2_previous_goals_follow_up::string, source.call2_previous_goals_follow_up::string) as call2_previous_goals_follow_up,
     -- Call 3 fields
     coalesce(object_json:call3_attempt::string, source.call3_attempt::string) as call3_attempt,
@@ -56,6 +59,7 @@ select
     coalesce(object_json:call3_review::string, source.call3_review::string) as call3_review,
     coalesce(object_json:call3_goals_sms::string, source.call3_goals_sms::string) as call3_goals_sms,
     coalesce(nullif(object_json:call3_goals::string, ''), source.call3_goals::string) as call3_goals,
+    coalesce(object_json:call3_sendings_benefits_details::string, source.call3_sendings_benefits_details::string) as call3_sendings_benefits_details,
     coalesce(object_json:call3_previous_goals_follow_up::string, source.call3_previous_goals_follow_up::string) as call3_previous_goals_follow_up,
     -- Call 4 fields
     coalesce(object_json:call4_previous_goals_follow_up::string, source.call4_previous_goals_follow_up::string) as call4_previous_goals_follow_up,
