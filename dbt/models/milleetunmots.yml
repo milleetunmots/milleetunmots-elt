@@ -22,6 +22,7 @@ sources:
       - name: tags
       - name: versions
       - name: workshops
+      - name: scheduled_calls
 
   - name: fact_anonymised
     database: MOTS_DW
