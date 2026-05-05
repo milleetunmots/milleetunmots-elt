@@ -1,56 +1,125 @@
-with scheduled_calls as (
-    select * from {{ ref('stg_1001mots_app__scheduled_calls') }}
+with super_table as (
+    select * from {{ ref('super_table') }}
 ),
 
-admin_users as (
-    select * from {{ ref('stg_1001mots_app__admin_users') }}
+-- Dépivotage de super_table : 1 ligne par famille × session
+super_table_long as (
+    select
+        family_id,
+        child_id,
+        cohort_name,
+        supporter_name,
+        group_status,
+        0                       as call_session,
+        call_0_status           as call_status,
+        nb_of_tries_call0       as nb_of_tries,
+        was_engaged_at_call0    as was_engaged
+    from super_table
+    where nb_of_tries_call0 is not null
+
+    union all
+
+    select
+        family_id,
+        child_id,
+        cohort_name,
+        supporter_name,
+        group_status,
+        1,
+        call1_status,
+        nb_of_tries_call1,
+        was_engaged_at_call1
+    from super_table
+    where nb_of_tries_call1 is not null
+
+    union all
+
+    select
+        family_id,
+        child_id,
+        cohort_name,
+        supporter_name,
+        group_status,
+        2,
+        call2_status,
+        nb_of_tries_call2,
+        was_engaged_at_call2
+    from super_table
+    where nb_of_tries_call2 is not null
+
+    union all
+
+    select
+        family_id,
+        child_id,
+        cohort_name,
+        supporter_name,
+        group_status,
+        3,
+        call3_status,
+        nb_of_tries_call3,
+        was_engaged_at_call3
+    from super_table
+    where nb_of_tries_call3 is not null
 ),
 
-child_supports as (
-    select * from {{ ref('stg_1001mots_app__child_supports') }}
-),
-
-groups as (
-    select * from {{ ref('groups') }}
-),
-
-child as (
-    select * from {{ ref('child') }}
+-- Agrégation des RDVs par famille × session
+bookings as (
+    select
+        family_id,
+        call_session,
+        count(*)                                                            as nb_bookings,
+        sum(case when status = 'canceled' then 1 else 0 end)               as nb_canceled,
+        max(case when status = 'scheduled' then 1 else 0 end)              as has_active_booking,
+        max(case when status = 'canceled' then 1 else 0 end)               as has_canceled_booking,
+        min(date_scheduled)                                                 as first_booking_date,
+        max(date_scheduled)                                                 as last_booking_date,
+        max(date_canceled)                                                  as last_canceled_date,
+        listagg(distinct event_type_name, ', ')
+            within group (order by event_type_name)                        as event_type_names
+    from {{ ref('stg_1001mots_app__scheduled_calls') }}
+    group by 1, 2
 )
 
 select
-    sc.scheduled_call_id,
-    sc.family_id,
-    sc.parent_id,
-    sc.admin_user_id,
-    au.name                                             as supporter_name,
-    sc.call_session,
-    g.group_name                                        as cohort_name,
-    g.is_excluded_from_analytics,
-    c.child_id,
-    c.gender,
-    c.date_birth                                        as birthdate,
-    sc.date_scheduled,
-    sc.duration_minutes,
-    sc.event_type_name,
-    sc.event_type_uri,
-    sc.calendly_event_uri,
-    sc.calendly_invitee_uri,
-    sc.invitee_email,
-    sc.invitee_name,
-    sc.invitee_comment,
-    sc.status,
-    sc.date_canceled,
-    sc.cancellation_reason,
-    sc.cancel_url,
-    sc.date_created,
-    sc.date_updated
-from scheduled_calls as sc
-left join admin_users as au
-    on au.supporter_id = sc.admin_user_id
-left join child_supports as cs
-    on cs.family_id = sc.family_id
-left join child as c
-    on c.family_id = sc.family_id
-left join groups as g
-    on g.group_id = c.group_id
+    st.family_id,
+    st.child_id,
+    st.cohort_name,
+    st.supporter_name,
+    st.group_status,
+    st.call_session,
+    st.call_status,
+    st.nb_of_tries,
+    st.was_engaged,
+
+    -- Indicateurs de RDV
+    coalesce(b.nb_bookings, 0)                                              as nb_bookings,
+    coalesce(b.nb_canceled, 0)                                              as nb_canceled,
+    coalesce(b.has_active_booking, 0)                                       as has_active_booking,
+    coalesce(b.has_canceled_booking, 0)                                     as has_canceled_booking,
+    case when coalesce(b.nb_bookings, 0) > 0 then 1 else 0 end             as has_booking,
+
+    -- RDV reprogrammé = annulé ET nouveau RDV actif
+    case
+        when coalesce(b.has_canceled_booking, 0) = 1
+         and coalesce(b.has_active_booking, 0) = 1
+        then 1 else 0
+    end                                                                     as is_rescheduled,
+
+    -- Annulé sans reprogrammation
+    case
+        when coalesce(b.has_canceled_booking, 0) = 1
+         and coalesce(b.has_active_booking, 0) = 0
+        then 1 else 0
+    end                                                                     as is_canceled_only,
+
+    -- Détails du RDV
+    b.first_booking_date,
+    b.last_booking_date,
+    b.last_canceled_date,
+    b.event_type_names
+
+from super_table_long as st
+left join bookings as b
+    on b.family_id = st.family_id
+    and b.call_session = st.call_session
