@@ -48,8 +48,9 @@ source as (
     select 
         css.child_id,
         css.source_id,
-        s.name, 
-        s.channel, 
+        css.is_reenrollment,
+        s.name,
+        s.channel,
         s.department
     from children_sources css
     inner join sources s
@@ -176,6 +177,7 @@ select
     cpf.family_id,
     cl.group_name as cohort_name,
     -- filters
+    s.is_reenrollment,
     s.channel as source_channel,
     s.name as source_name,
     LPAD(TRIM(s.department), 2, '0') as source_department,

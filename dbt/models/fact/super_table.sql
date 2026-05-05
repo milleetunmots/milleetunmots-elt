@@ -258,8 +258,9 @@ source AS (
     SELECT 
         cs.child_id,
         cs.source_id,
-        s.name, 
-        s.channel, 
+        cs.is_reenrollment,
+        s.name,
+        s.channel,
         s.department
     FROM children_sources AS cs
     INNER JOIN sources AS s ON cs.source_id = s.source_id
@@ -306,6 +307,7 @@ SELECT distinct
     {{ get_engagement_state_t1('t3.tag_id', 't4.tag_id', 't5.tag_id') }} AS engagement_state_t1,
     {{ get_engagement_state_t2('t1.tag_id', 't2.tag_id', 't6.tag_id') }} AS engagement_state_t2,
     p1.city_name AS parent1_city_name,
+    so.is_reenrollment,
     so.name AS source_name,
     so.channel AS source_channel,
     LPAD(TRIM(so.department), 2, '0') AS source_department,
