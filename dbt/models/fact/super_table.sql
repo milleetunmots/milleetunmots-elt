@@ -270,6 +270,7 @@ source AS (
 SELECT distinct
     concat(cpf.family_id, '_', yc.child_id) as ind,
     cpf.family_id,
+    concat('https://app.1001mots.org/admin/child_supports/', cpf.family_id) as fiche_de_suivi_url,
     yc.child_id,
     f.created_at AS support_creation_date,
     yc.gender,
@@ -344,6 +345,7 @@ SELECT distinct
 
     -- Arrêt accompagnante
     f.stop_support_reason,
+    f.date_stop_support,
     {{ get_call_number_when_disengaged('f.date_stop_support', 'g.date_call0_end', 'g.date_call1_end', 'g.date_call2_end', 'g.date_call3_end') }} AS call_number_when_disengaged_stop_support,
 
 

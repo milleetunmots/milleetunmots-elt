@@ -1,4 +1,8 @@
-with super_table as (
+with aircall as (
+    select * from {{ ref('stg_1001mots_app__aircall_calls') }}
+),
+
+super_table as (
     select * from {{ ref('super_table') }}
 ),
 
@@ -64,20 +68,37 @@ super_table_long as (
 ),
 
 -- Agrégation des RDVs par famille × session
+-- avec flag si un appel aircall a eu lieu pendant le créneau booké
 bookings as (
     select
-        family_id,
-        call_session,
+        sc.family_id,
+        sc.call_session,
         count(*)                                                            as nb_bookings,
-        sum(case when status = 'canceled' then 1 else 0 end)               as nb_canceled,
-        max(case when status = 'scheduled' then 1 else 0 end)              as has_active_booking,
-        max(case when status = 'canceled' then 1 else 0 end)               as has_canceled_booking,
-        min(date_scheduled)                                                 as first_booking_date,
-        max(date_scheduled)                                                 as last_booking_date,
-        max(date_canceled)                                                  as last_canceled_date,
-        listagg(distinct event_type_name, ', ')
-            within group (order by event_type_name)                        as event_type_names
-    from {{ ref('stg_1001mots_app__scheduled_calls') }}
+        sum(case when sc.status = 'canceled' then 1 else 0 end)            as nb_canceled,
+        max(case when sc.status = 'scheduled' then 1 else 0 end)           as has_active_booking,
+        max(case when sc.status = 'canceled' then 1 else 0 end)            as has_canceled_booking,
+        min(sc.date_scheduled)                                              as first_booking_date,
+        max(sc.date_scheduled)                                              as last_booking_date,
+        max(sc.date_canceled)                                               as last_canceled_date,
+        listagg(distinct sc.event_type_name, ', ')
+            within group (order by sc.event_type_name)                     as event_type_names,
+        -- Un appel a-t-il eu lieu pendant le créneau ?
+        max(case
+            when ac.started_at >= sc.scheduled_at
+             and ac.started_at <= dateadd(minute, sc.duration_minutes, sc.scheduled_at)
+            then 1 else 0
+        end)                                                                as had_call_during_slot,
+        -- Un vrai appel (duration > 400s) a-t-il eu lieu pendant le créneau ?
+        max(case
+            when ac.started_at >= sc.scheduled_at
+             and ac.started_at <= dateadd(minute, sc.duration_minutes, sc.scheduled_at)
+             and ac.duration > 400
+            then 1 else 0
+        end)                                                                as had_real_call_during_slot
+    from {{ ref('stg_1001mots_app__scheduled_calls') }} as sc
+    left join aircall as ac
+        on  ac.child_support_id = sc.family_id
+        and ac.call_session = sc.call_session
     group by 1, 2
 )
 
@@ -117,7 +138,9 @@ select
     b.first_booking_date,
     b.last_booking_date,
     b.last_canceled_date,
-    b.event_type_names
+    b.event_type_names,
+    coalesce(b.had_call_during_slot, 0)                                     as had_call_during_slot,
+    coalesce(b.had_real_call_during_slot, 0)                                as had_real_call_during_slot
 
 from super_table_long as st
 left join bookings as b

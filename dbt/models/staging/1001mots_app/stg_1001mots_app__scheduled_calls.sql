@@ -11,6 +11,7 @@ select
     call_session::integer                               as call_session,
     calendly_event_uri::string                          as calendly_event_uri,
     calendly_invitee_uri::string                        as calendly_invitee_uri,
+    scheduled_at::timestamp_ntz                         as scheduled_at,
     to_date(
             nullif(scheduled_at::string, '')
     ) as date_scheduled,
