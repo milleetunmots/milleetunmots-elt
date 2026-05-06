@@ -19,7 +19,7 @@ super_table_long as (
         nb_of_tries_call0       as nb_of_tries,
         was_engaged_at_call0    as was_engaged
     from super_table
-    where nb_of_tries_call0 is not null
+    --where nb_of_tries_call0 is not null
 
     union all
 
@@ -34,7 +34,7 @@ super_table_long as (
         nb_of_tries_call1,
         was_engaged_at_call1
     from super_table
-    where nb_of_tries_call1 is not null
+    --where nb_of_tries_call1 is not null
 
     union all
 
@@ -49,7 +49,7 @@ super_table_long as (
         nb_of_tries_call2,
         was_engaged_at_call2
     from super_table
-    where nb_of_tries_call2 is not null
+    --where nb_of_tries_call2 is not null
 
     union all
 
@@ -64,7 +64,7 @@ super_table_long as (
         nb_of_tries_call3,
         was_engaged_at_call3
     from super_table
-    where nb_of_tries_call3 is not null
+    --where nb_of_tries_call3 is not null
 ),
 
 -- Agrégation des RDVs par famille × session
@@ -80,6 +80,8 @@ bookings as (
         min(sc.date_scheduled)                                              as first_booking_date,
         max(sc.date_scheduled)                                              as last_booking_date,
         max(sc.date_canceled)                                               as last_canceled_date,
+        -- Date du RDV reprogrammé = date du booking actif quand il y a aussi eu une annulation
+        max(case when sc.status = 'scheduled' then sc.date_scheduled end)   as rescheduled_date,
         listagg(distinct sc.event_type_name, ', ')
             within group (order by sc.event_type_name)                     as event_type_names,
         -- Un appel a-t-il eu lieu pendant le créneau ?
@@ -92,7 +94,7 @@ bookings as (
         max(case
             when ac.started_at >= sc.scheduled_at
              and ac.started_at <= dateadd(minute, sc.duration_minutes, sc.scheduled_at)
-             and ac.duration > 400
+             and ac.duration > 300
             then 1 else 0
         end)                                                                as had_real_call_during_slot
     from {{ ref('stg_1001mots_app__scheduled_calls') }} as sc
@@ -138,9 +140,30 @@ select
     b.first_booking_date,
     b.last_booking_date,
     b.last_canceled_date,
+    case when coalesce(b.has_canceled_booking, 0) = 1
+          and coalesce(b.has_active_booking, 0) = 1
+         then b.rescheduled_date
+    end                                                                     as rescheduled_date,
     b.event_type_names,
     coalesce(b.had_call_during_slot, 0)                                     as had_call_during_slot,
-    coalesce(b.had_real_call_during_slot, 0)                                as had_real_call_during_slot
+    coalesce(b.had_real_call_during_slot, 0)                                as had_real_call_during_slot,
+
+    -- No-show côté aircall : RDV pris mais aucun vrai appel pendant le créneau
+    case
+        when coalesce(b.has_active_booking, 0) = 1
+         and coalesce(b.had_real_call_during_slot, 0) = 0
+        then 1 else 0
+    end                                                                     as is_no_show_aircall,
+
+    -- No-show côté statut d'appel : RDV pris mais appel ni OK (toute variante) ni Incomplet (NULL inclus)
+    case
+        when coalesce(b.has_active_booking, 0) = 1
+         and not (
+             coalesce(st.call_status, '') ilike '%ok%'
+             or coalesce(st.call_status, '') ilike 'incomplet%'
+         )
+        then 1 else 0
+    end                                                                     as is_no_show_call_status
 
 from super_table_long as st
 left join bookings as b
