@@ -15,6 +15,7 @@ select
     to_date(
             nullif(scheduled_at::string, '')
     ) as date_scheduled,
+    canceled_at::timestamp_ntz                          as canceled_at,
     duration_minutes::integer                           as duration_minutes,
     event_type_name::string                             as event_type_name,
     event_type_uri::string                              as event_type_uri,
