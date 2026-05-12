@@ -1,3 +1,18 @@
+-- Granularité : 1 ligne par famille × session d'appel (0, 1, 2, 3)
+-- Toutes les familles de super_table sont incluses, qu'elles aient pris RDV ou non.
+--
+-- Ce modèle permet de calculer :
+--   - % de familles ayant pris RDV parmi les familles actives à la session
+--   - % de familles ayant pris RDV parmi les appels OK
+--   - Impact des RDVs sur le taux d'appels OK
+--   - % de no-shows (2 définitions : aircall et statut d'appel)
+--   - % d'annulations et de reprogrammations
+--
+-- ⚠️  LIMITATION : had_call_during_slot et had_real_call_during_slot
+-- ne couvrent que les appels passés via Aircall. Les appels hors Aircall
+-- (mobile direct, fixe) ne sont pas détectables.
+-- Pour une vue au niveau appel individuel, utiliser calls_with_booking.
+
 with aircall as (
     select * from {{ ref('stg_1001mots_app__aircall_calls') }}
 ),
