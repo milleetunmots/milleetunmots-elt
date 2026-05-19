@@ -21,6 +21,56 @@ super_table as (
     select * from {{ ref('super_table') }}
 ),
 
+-- Dates de session d'appel par famille (récupérées via le groupe du plus jeune enfant)
+group_call_dates as (
+    select distinct
+        st.family_id,
+        g.date_call0_start, g.date_call0_end,
+        g.date_call1_start, g.date_call1_end,
+        g.date_call2_start, g.date_call2_end,
+        g.date_call3_start, g.date_call3_end
+    from super_table as st
+    inner join {{ ref('child') }} as c on c.child_id = st.child_id
+    inner join {{ ref('stg_1001mots_app__groups') }} as g on g.group_id = c.group_id
+),
+
+-- SMS Calendly : SMS de type TextMessage contenant 'calendly' (insensible à la casse)
+-- Imputés à une session d'appel selon date_occurred :
+--   session 0 = tout SMS envoyé jusqu'à date_call0_end
+--   session N = SMS entre date_call(N-1)_end et date_callN_end
+-- Lien : event.related_id = parent_id → famille via parent_enfant
+calendly_sms as (
+    select
+        gcd.family_id,
+        e.event_id,
+        e.date_occurred,
+        e.body,
+        case
+            when e.date_occurred <= gcd.date_call0_end                                  then 0
+            when e.date_occurred >  gcd.date_call0_end and e.date_occurred <= gcd.date_call1_end then 1
+            when e.date_occurred >  gcd.date_call1_end and e.date_occurred <= gcd.date_call2_end then 2
+            when e.date_occurred >  gcd.date_call2_end and e.date_occurred <= gcd.date_call3_end then 3
+        end as call_session
+    from {{ ref('stg_1001mots_app__events') }} as e
+    inner join {{ ref('parent_enfant') }} as pe on pe.parent_id = e.related_id
+    inner join group_call_dates as gcd on gcd.family_id = pe.child_support_id
+    where e.type = 'Events::TextMessage'
+      and e.body ilike '%calendly%'
+),
+
+-- Agrégation par famille × session
+calendly_sms_per_session as (
+    select
+        family_id,
+        call_session,
+        count(distinct event_id)        as nb_calendly_sms,
+        min(date_occurred)              as first_calendly_sms_date,
+        max(date_occurred)              as last_calendly_sms_date
+    from calendly_sms
+    where call_session is not null
+    group by 1, 2
+),
+
 -- Dépivotage de super_table : 1 ligne par famille × session
 super_table_long as (
     select
@@ -372,9 +422,18 @@ select
     case
         when coalesce(b.nb_bookings, 0) = 0 then null
         else {{ clean_call_status('st.call_status') }}
-    end                                                                     as sankey3_final_target
+    end                                                                     as sankey3_final_target,
+
+    -- Indicateurs SMS Calendly imputés à la session via les dates du groupe
+    coalesce(cs.nb_calendly_sms, 0)                                         as nb_calendly_sms,
+    case when coalesce(cs.nb_calendly_sms, 0) > 0 then 1 else 0 end        as had_calendly_sms,
+    cs.first_calendly_sms_date,
+    cs.last_calendly_sms_date
 
 from super_table_long as st
 left join bookings as b
     on b.family_id = st.family_id
     and b.call_session = st.call_session
+left join calendly_sms_per_session as cs
+    on cs.family_id = st.family_id
+    and cs.call_session = st.call_session
