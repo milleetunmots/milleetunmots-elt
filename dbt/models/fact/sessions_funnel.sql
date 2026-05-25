@@ -13,6 +13,7 @@ with s as (
         family_id,
         call_session,
         cohort_name,
+        supporter_name,
         session_outcome,
         had_calendly_sms,
         has_call_status
@@ -20,38 +21,41 @@ with s as (
     where session_outcome in ('RDV pris', 'RDV annulé')
 ),
 
--- Niveau 0 : Sessions avec RDV → RDV pris / RDV annulé
+-- Niveau 0 : Sessions avec RDV → Avec/Sans SMS Calendly
 level_0 as (
     select
         family_id,
         call_session,
         cohort_name,
+        supporter_name,
         0 as level,
         'Sessions avec RDV' as source,
-        session_outcome as target
+        case when had_calendly_sms = 1 then 'Avec SMS Calendly' else 'Sans SMS Calendly' end as target
     from s
 ),
 
--- Niveau 1 : RDV pris/annulé → Avec/Sans SMS Calendly
+-- Niveau 1 : Avec/Sans SMS → RDV pris / RDV annulé
 level_1 as (
     select
         family_id,
         call_session,
         cohort_name,
+        supporter_name,
         1 as level,
-        session_outcome as source,
-        case when had_calendly_sms = 1 then 'Avec SMS Calendly' else 'Sans SMS Calendly' end as target
+        case when had_calendly_sms = 1 then 'Avec SMS Calendly' else 'Sans SMS Calendly' end as source,
+        session_outcome as target
     from s
 ),
 
--- Niveau 2 : Avec/Sans SMS → Statut connu / À venir
+-- Niveau 2 : RDV pris/annulé → Statut connu / À venir
 level_2 as (
     select
         family_id,
         call_session,
         cohort_name,
+        supporter_name,
         2 as level,
-        case when had_calendly_sms = 1 then 'Avec SMS Calendly' else 'Sans SMS Calendly' end as source,
+        session_outcome as source,
         case when has_call_status = 1 then 'Statut connu' else 'À venir' end as target
     from s
 )
