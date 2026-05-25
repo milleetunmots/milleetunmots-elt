@@ -71,8 +71,8 @@ calendly_sms_per_session as (
     group by 1, 2
 ),
 
--- Dépivotage de super_table : 1 ligne par famille × session
-super_table_long as (
+-- Dépivotage de super_table : 1 ligne par famille × enfant × session
+super_table_long_raw as (
     select
         family_id,
         child_id,
@@ -84,7 +84,6 @@ super_table_long as (
         nb_of_tries_call0       as nb_of_tries,
         was_engaged_at_call0    as was_engaged
     from super_table
-    --where nb_of_tries_call0 is not null
 
     union all
 
@@ -99,7 +98,6 @@ super_table_long as (
         nb_of_tries_call1,
         was_engaged_at_call1
     from super_table
-    --where nb_of_tries_call1 is not null
 
     union all
 
@@ -114,7 +112,6 @@ super_table_long as (
         nb_of_tries_call2,
         was_engaged_at_call2
     from super_table
-    --where nb_of_tries_call2 is not null
 
     union all
 
@@ -129,7 +126,24 @@ super_table_long as (
         nb_of_tries_call3,
         was_engaged_at_call3
     from super_table
-    --where nb_of_tries_call3 is not null
+),
+
+-- Agrégation au niveau famille × session : certaines familles ont plusieurs enfants
+-- (ex: jumeaux) qui partagent les mêmes RDV. On ne veut compter les RDV qu'1 fois par famille.
+super_table_long as (
+    select
+        family_id,
+        call_session,
+        array_agg(distinct child_id) within group (order by child_id) as child_ids,
+        count(distinct child_id)                                      as nb_children,
+        max(cohort_name)     as cohort_name,
+        max(supporter_name)  as supporter_name,
+        max(group_status)    as group_status,
+        max(call_status)     as call_status,
+        max(nb_of_tries)     as nb_of_tries,
+        max(was_engaged)     as was_engaged
+    from super_table_long_raw
+    group by family_id, call_session
 ),
 
 -- RDVs valides : on exclut les annulations faites avant l'heure du RDV
@@ -143,8 +157,9 @@ valid_bookings as (
             order by scheduled_at
         )                                                                   as booking_number
     from {{ ref('stg_1001mots_app__scheduled_calls') }}
-    where status = 'scheduled'
-       or (status = 'canceled' and canceled_at >= scheduled_at)
+    -- Ajout de tous les RDV annulés mais à exclure dan la seconde partie du dashboard metabase
+    --where status = 'scheduled'
+    --   or status = 'canceled'-- and canceled_at >= scheduled_at)
 ),
 
 -- Agrégation des RDVs par famille × session
@@ -186,7 +201,8 @@ bookings as (
 
 select
     st.family_id,
-    st.child_id,
+    st.child_ids,
+    st.nb_children,
     st.cohort_name,
     st.supporter_name,
     st.group_status,
@@ -199,9 +215,18 @@ select
     -- Indicateurs de RDV
     coalesce(b.nb_bookings, 0)                                              as nb_bookings,
     coalesce(b.nb_canceled, 0)                                              as nb_canceled,
+    coalesce(b.nb_bookings, 0) - coalesce(b.nb_canceled, 0)                as nb_active_bookings,
     coalesce(b.has_active_booking, 0)                                       as has_active_booking,
     coalesce(b.has_canceled_booking, 0)                                     as has_canceled_booking,
     case when coalesce(b.nb_bookings, 0) > 0 then 1 else 0 end             as has_booking,
+    case when {{ clean_call_status('st.call_status') }} is not null then 1 else 0 end as has_call_status,
+
+    -- Colonne catégorielle pour pie chart : statut du RDV au niveau session
+    case
+        when coalesce(b.nb_bookings, 0) = 0          then 'Sans RDV'
+        when coalesce(b.has_active_booking, 0) = 1   then 'RDV pris'
+        when coalesce(b.has_canceled_booking, 0) = 1 then 'RDV annulé'
+    end                                                                     as session_outcome,
 
     -- RDV reprogrammé = annulé ET nouveau RDV actif
     case
