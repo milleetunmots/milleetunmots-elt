@@ -46,6 +46,11 @@ select
             nullif(call3_end_date::string, '')
     ) as date_call3_end,
     is_programmed::boolean as is_programmed,
-    is_excluded_from_analytics::boolean as is_excluded_from_analytics
-    --Ajouter les autres colonnes
+    is_excluded_from_analytics::boolean as is_excluded_from_analytics,
+    enable_calls_recording::boolean as enable_calls_recording,
+    support_module_sent_dates::string as support_module_sent_dates,
+    type_of_support::string as type_of_support,
+    support_modules_count::integer as support_modules_count,
+    support_module_programmed::integer as support_module_programmed,
+    expected_children_number::integer as expected_children_number
 from source

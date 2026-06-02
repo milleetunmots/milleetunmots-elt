@@ -34,6 +34,8 @@ select
     coalesce(object_json:call0_goals_sms::string, source.call0_goals_sms::string) as call0_goals_sms,
     coalesce(nullif(object_json:call0_goals::string, ''), source.call0_goals::string) as call0_goals,
     coalesce(object_json:call0_sendings_benefits_details::string, source.call0_sendings_benefits_details::string) as call0_sendings_benefits_details,
+    coalesce(object_json:call0_talk_needed::boolean, source.call0_talk_needed::boolean) as call0_talk_needed,
+    coalesce(object_json:call0_why_talk_needed::string, source.call0_why_talk_needed::string) as call0_why_talk_needed,
     -- Call 1 fields
     coalesce(object_json:call1_attempt::string, source.call1_attempt::string) as call1_attempt,
     coalesce(object_json:call1_duration::integer, source.call1_duration::integer) as call1_duration,
@@ -43,6 +45,8 @@ select
     coalesce(nullif(object_json:call1_goals::string, ''), source.call1_goals::string) as call1_goals,
     coalesce(object_json:call1_sendings_benefits_details::string, source.call1_sendings_benefits_details::string) as call1_sendings_benefits_details,
     coalesce(object_json:call1_previous_goals_follow_up::string, source.call1_previous_goals_follow_up::string) as call1_previous_goals_follow_up,
+    coalesce(object_json:call1_talk_needed::boolean, source.call1_talk_needed::boolean) as call1_talk_needed,
+    coalesce(object_json:call1_why_talk_needed::string, source.call1_why_talk_needed::string) as call1_why_talk_needed,
     -- Call 2 fields
     coalesce(object_json:call2_attempt::string, source.call2_attempt::string) as call2_attempt,
     coalesce(object_json:call2_duration::integer, source.call2_duration::integer) as call2_duration,
@@ -52,6 +56,8 @@ select
     coalesce(nullif(object_json:call2_goals::string, ''), source.call2_goals::string) as call2_goals,
     coalesce(object_json:call2_sendings_benefits_details::string, source.call2_sendings_benefits_details::string) as call2_sendings_benefits_details,
     coalesce(object_json:call2_previous_goals_follow_up::string, source.call2_previous_goals_follow_up::string) as call2_previous_goals_follow_up,
+    coalesce(object_json:call2_talk_needed::boolean, source.call2_talk_needed::boolean) as call2_talk_needed,
+    coalesce(object_json:call2_why_talk_needed::string, source.call2_why_talk_needed::string) as call2_why_talk_needed,
     -- Call 3 fields
     coalesce(object_json:call3_attempt::string, source.call3_attempt::string) as call3_attempt,
     coalesce(object_json:call3_duration::integer, source.call3_duration::integer) as call3_duration,
@@ -61,6 +67,8 @@ select
     coalesce(nullif(object_json:call3_goals::string, ''), source.call3_goals::string) as call3_goals,
     coalesce(object_json:call3_sendings_benefits_details::string, source.call3_sendings_benefits_details::string) as call3_sendings_benefits_details,
     coalesce(object_json:call3_previous_goals_follow_up::string, source.call3_previous_goals_follow_up::string) as call3_previous_goals_follow_up,
+    coalesce(object_json:call3_talk_needed::boolean, source.call3_talk_needed::boolean) as call3_talk_needed,
+    coalesce(object_json:call3_why_talk_needed::string, source.call3_why_talk_needed::string) as call3_why_talk_needed,
     -- Call 4 fields
     coalesce(object_json:call4_previous_goals_follow_up::string, source.call4_previous_goals_follow_up::string) as call4_previous_goals_follow_up,
     -- Timestamps
