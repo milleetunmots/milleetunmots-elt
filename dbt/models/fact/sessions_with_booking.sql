@@ -71,6 +71,127 @@ calendly_sms_per_session as (
     group by 1, 2
 ),
 
+-- Tags de la famille (taggable_type = 'ChildSupport'), imputés à une session d'appel
+-- selon date_created, même règle de fenêtrage que les SMS Calendly ci-dessus :
+--   session 0 = tag posé jusqu'à date_call0_end
+--   session N = tag posé entre date_call(N-1)_end et date_callN_end
+-- Cas particulier session 3 : tout tag posé après date_call2_end y est rattaché,
+-- y compris ceux posés après date_call3_end (fin de l'accompagnement) — pas de bucket
+-- supplémentaire ni de ligne en plus, on les isole avec is_after_call3.
+family_taggings as (
+    select
+        gcd.family_id,
+        tg.tagging_id,
+        t.tag_id,
+        t.tag_name,
+        tg.date_created,
+        -- Tags d'engagement (mêmes IDs que super_table / child_engagement_history)
+        case when t.tag_id in ('893', '900', '901', '874', '876', '877', '1071')
+             then t.tag_name end                                            as disengagement_tag_name,
+        case
+            when tg.date_created <= gcd.date_call0_end                                          then 0
+            when tg.date_created >  gcd.date_call0_end and tg.date_created <= gcd.date_call1_end then 1
+            when tg.date_created >  gcd.date_call1_end and tg.date_created <= gcd.date_call2_end then 2
+            when tg.date_created >  gcd.date_call2_end                                           then 3
+        end                                                                 as call_session,
+        -- Tag rattaché à la session 3 mais posé après la fin de l'accompagnement
+        case when tg.date_created > gcd.date_call3_end then 1 else 0 end    as is_after_call3
+    from {{ ref('stg_1001mots_app__taggings') }} as tg
+    inner join {{ ref('stg_1001mots_app__tags') }} as t on t.tag_id = tg.tag_id
+    inner join group_call_dates as gcd on gcd.family_id = tg.taggable_id
+    where tg.taggable_type = 'ChildSupport'
+),
+
+-- Persistance : un tag posé à la session N reste rattaché à N et à TOUTES les
+-- sessions suivantes (le tag ne s'annule pas à la fin de la session).
+-- On propage donc chaque tagging sur les sessions >= sa session de pose.
+family_taggings_persisted as (
+    select
+        ft.family_id,
+        sessions.call_session,
+        ft.call_session                                                     as tagged_at_session,
+        ft.tag_id,
+        ft.tag_name,
+        ft.disengagement_tag_name,
+        ft.date_created,
+        ft.is_after_call3
+    from family_taggings as ft
+    cross join (
+        select 0 as call_session union all
+        select 1 union all
+        select 2 union all
+        select 3
+    ) as sessions
+    where ft.call_session is not null
+      and sessions.call_session >= ft.call_session
+),
+
+-- Agrégation par famille × session
+--   *_at_session : tag posé PENDANT la fenêtre de la session
+--   les autres colonnes : tags ACTIFS à la session, c'est-à-dire posés à cette
+--   session ou à n'importe quelle session antérieure
+tags_per_session as (
+    select
+        family_id,
+        call_session,
+
+        -- Tags actifs (cumul jusqu'à la session incluse)
+        count(distinct tag_id)                                              as nb_active_tags,
+        listagg(distinct tag_name, ', ')
+            within group (order by tag_name)                                as active_tag_list,
+        array_sort(array_agg(distinct tag_name))                            as active_tag_array,
+        listagg(distinct disengagement_tag_name, ', ')
+            within group (order by disengagement_tag_name)                  as active_disengagement_tags,
+        max(case when disengagement_tag_name is not null then 1 else 0 end) as has_disengagement_tag,
+        max(case when tag_id = '1076' then 1 else 0 end)                    as has_restarted_tag,
+        min(date_created)                                                   as first_tag_date,
+        max(date_created)                                                   as last_tag_date,
+        min(case when disengagement_tag_name is not null
+                 then date_created end)                                     as first_disengagement_tag_date,
+        max(case when disengagement_tag_name is not null
+                 then date_created end)                                     as last_disengagement_tag_date,
+        max(case when tag_id = '1076' then date_created end)                as last_restarted_tag_date,
+
+        -- Tags posés pendant la fenêtre de la session
+        count(distinct case when tagged_at_session = call_session
+                            then tag_id end)                                as nb_session_tags,
+        listagg(distinct case when tagged_at_session = call_session
+                              then tag_name end, ', ')
+            within group (order by case when tagged_at_session = call_session
+                                        then tag_name end)                  as session_tag_list,
+        array_sort(array_compact(array_agg(distinct
+            case when tagged_at_session = call_session then tag_name end))) as session_tag_array,
+        listagg(distinct case when tagged_at_session = call_session
+                              then disengagement_tag_name end, ', ')
+            within group (order by case when tagged_at_session = call_session
+                                        then disengagement_tag_name end)    as session_disengagement_tags,
+        max(case when tagged_at_session = call_session
+                  and disengagement_tag_name is not null
+                 then 1 else 0 end)                                         as has_disengagement_tag_at_session,
+        max(case when tagged_at_session = call_session and tag_id = '1076'
+                 then 1 else 0 end)                                         as has_restarted_tag_at_session,
+
+        -- Tags hérités des sessions strictement antérieures
+        count(distinct case when tagged_at_session < call_session
+                            then tag_id end)                                as nb_tags_before_session,
+        max(case when tagged_at_session < call_session
+                  and disengagement_tag_name is not null
+                 then 1 else 0 end)                                         as has_disengagement_tag_before_session,
+        max(case when tagged_at_session < call_session and tag_id = '1076'
+                 then 1 else 0 end)                                         as has_restarted_tag_before_session,
+
+        -- Tags rattachés à la session 3 mais posés après date_call3_end
+        max(case when tagged_at_session = call_session then is_after_call3
+                 else 0 end)                                                as has_tag_after_call3,
+        count(distinct case when tagged_at_session = call_session and is_after_call3 = 1
+                            then tag_id end)                                as nb_tags_after_call3,
+        max(case when tagged_at_session = call_session and is_after_call3 = 1
+                  and disengagement_tag_name is not null
+                 then 1 else 0 end)                                         as has_disengagement_tag_after_call3
+    from family_taggings_persisted
+    group by 1, 2
+),
+
 -- Dépivotage de super_table : 1 ligne par famille × enfant × session
 super_table_long_raw as (
     select
@@ -453,7 +574,73 @@ select
     coalesce(cs.nb_calendly_sms, 0)                                         as nb_calendly_sms,
     case when coalesce(cs.nb_calendly_sms, 0) > 0 then 1 else 0 end        as had_calendly_sms,
     cs.first_calendly_sms_date,
-    cs.last_calendly_sms_date
+    cs.last_calendly_sms_date,
+
+    -- -----------------------------------------------------------------------
+    -- Tags (logique temporelle, avec persistance)
+    -- Un tag posé à la session N est actif à la session N et à toutes les suivantes.
+    --   sans suffixe      : tag actif à la session (posé à cette session ou avant)
+    --   *_at_session      : posé pendant la fenêtre de la session
+    --   *_before_session  : hérité d'une session strictement antérieure
+    --   *_after_call3     : rattaché à la session 3 mais posé après date_call3_end
+    -- -----------------------------------------------------------------------
+
+    -- Tags actifs à la session
+    coalesce(tg.nb_active_tags, 0)                                          as nb_active_tags,
+    tg.active_tag_list,
+    tg.active_tag_array,
+    tg.active_disengagement_tags,
+    coalesce(tg.has_disengagement_tag, 0)                                   as has_disengagement_tag,
+    coalesce(tg.has_restarted_tag, 0)                                       as has_restarted_tag,
+    case when coalesce(tg.nb_active_tags, 0) > 0 then 1 else 0 end         as has_tag,
+    tg.first_tag_date,
+    tg.last_tag_date,
+    tg.first_disengagement_tag_date,
+
+    -- Tags posés pendant la session
+    coalesce(tg.nb_session_tags, 0)                                         as nb_session_tags,
+    tg.session_tag_list,
+    tg.session_tag_array,
+    tg.session_disengagement_tags,
+    coalesce(tg.has_disengagement_tag_at_session, 0)                        as has_disengagement_tag_at_session,
+    coalesce(tg.has_restarted_tag_at_session, 0)                            as has_restarted_tag_at_session,
+    case when coalesce(tg.nb_session_tags, 0) > 0 then 1 else 0 end        as had_tag_at_session,
+
+    -- Tags hérités des sessions précédentes
+    coalesce(tg.nb_tags_before_session, 0)                                  as nb_tags_before_session,
+    coalesce(tg.has_disengagement_tag_before_session, 0)                    as has_disengagement_tag_before_session,
+    coalesce(tg.has_restarted_tag_before_session, 0)                        as has_restarted_tag_before_session,
+
+    -- Tags de la session 3 posés après la fin de l'accompagnement
+    coalesce(tg.has_tag_after_call3, 0)                                     as has_tag_after_call3,
+    coalesce(tg.nb_tags_after_call3, 0)                                     as nb_tags_after_call3,
+    coalesce(tg.has_disengagement_tag_after_call3, 0)                       as has_disengagement_tag_after_call3,
+
+    -- État de désengagement à la session : dernier tag de désengagement postérieur
+    -- au dernier tag de redémarrage (1076)
+    case
+        when tg.last_disengagement_tag_date is null then 0
+        when tg.last_restarted_tag_date is null
+          or tg.last_restarted_tag_date < tg.last_disengagement_tag_date then 1
+        else 0
+    end                                                                     as is_disengaged_at_session,
+
+    -- Déjà désengagée à l'entrée de la session (et non redémarrée depuis) :
+    -- candidate à l'exclusion des dénominateurs de RDV / no-show
+    case
+        when coalesce(tg.has_disengagement_tag_before_session, 0) = 1
+         and coalesce(tg.has_restarted_tag_before_session, 0) = 0
+        then 1 else 0
+    end                                                                     as was_disengaged_before_session,
+
+    -- Colonne catégorielle prête pour un pie chart / une dimension Sankey
+    case
+        when coalesce(tg.has_disengagement_tag_at_session, 0) = 1 then 'Tag désengagement'
+        when coalesce(tg.has_restarted_tag_at_session, 0)     = 1 then 'Tag redémarrage'
+        when coalesce(tg.nb_session_tags, 0) > 0                  then 'Autre tag'
+        when coalesce(tg.nb_active_tags, 0) > 0                   then 'Tag hérité'
+        else 'Aucun tag'
+    end                                                                     as session_tag_outcome
 
 from super_table_long as st
 left join bookings as b
@@ -462,3 +649,6 @@ left join bookings as b
 left join calendly_sms_per_session as cs
     on cs.family_id = st.family_id
     and cs.call_session = st.call_session
+left join tags_per_session as tg
+    on  tg.family_id = st.family_id
+    and tg.call_session = st.call_session

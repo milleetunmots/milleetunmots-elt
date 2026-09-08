@@ -16,7 +16,9 @@ with s as (
         supporter_name,
         session_outcome,
         had_calendly_sms,
-        has_call_status
+        has_call_status,
+        -- Tags actifs à la session (posés à cette session ou à une précédente)
+        active_tag_list
     from {{ ref('sessions_with_booking') }}
     where session_outcome in ('RDV pris', 'RDV annulé')
 ),
@@ -28,6 +30,7 @@ level_0 as (
         call_session,
         cohort_name,
         supporter_name,
+        active_tag_list,
         0 as level,
         'Sessions avec RDV' as source,
         case when had_calendly_sms = 1 then 'Avec SMS Calendly' else 'Sans SMS Calendly' end as target
@@ -41,6 +44,7 @@ level_1 as (
         call_session,
         cohort_name,
         supporter_name,
+        active_tag_list,
         1 as level,
         case when had_calendly_sms = 1 then 'Avec SMS Calendly' else 'Sans SMS Calendly' end as source,
         session_outcome as target
@@ -54,6 +58,7 @@ level_2 as (
         call_session,
         cohort_name,
         supporter_name,
+        active_tag_list,
         2 as level,
         session_outcome as source,
         case when has_call_status = 1 then 'Statut connu' else 'À venir' end as target
