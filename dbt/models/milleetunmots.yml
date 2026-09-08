@@ -41,3 +41,4 @@ sources:
       - name: seed_super_table
       - name: seed_mecene
       - name: factivation
+      - name: segmentation_appel

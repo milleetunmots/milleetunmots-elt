@@ -23,6 +23,12 @@ asup as (
     from {{ source('seed', 'analyse_supervision') }}
 ),
 
+-- Segmentation qualitative des appels (seed) : 1 ligne par appel, clé = id_appel
+seg as (
+    select *
+    from {{ source('seed', 'segmentation_appel') }}
+),
+
 st as (
     select *
     from {{ ref('super_table') }}
@@ -159,6 +165,24 @@ select
     at.pm_liee_sujet_parent,
     at.pm_pratiques_creusees,
     asup.niveau_appel,
+
+    -- Segmentation de l'appel (seed segmentation_appel)
+    seg.flag                as segmentation_flag,
+    seg.score               as segmentation_score,
+    seg.c1                  as segmentation_c1,
+    seg.c2                  as segmentation_c2,
+    seg.c3                  as segmentation_c3,
+    seg.c4                  as segmentation_c4,
+    seg.c5                  as segmentation_c5,
+    seg.c6                  as segmentation_c6,
+    seg.nb_q_ouvertes       as segmentation_nb_q_ouvertes,
+    seg.nb_q_fermees        as segmentation_nb_q_fermees,
+    seg.nb_reformulations   as segmentation_nb_reformulations,
+    seg.origine_pm          as segmentation_origine_pm,
+    seg.manques             as segmentation_manques,
+    seg.verbatim_cle        as segmentation_verbatim_cle,
+    case when seg.id_appel is not null then 1 else 0 end as has_segmentation,
+
     row_number() over (partition by final.family_id, final.call_session order by ac.date_started) as call_number
 from final
 left join g_base
@@ -172,4 +196,6 @@ left join at
     on ac.call_id = at.call_id
 left join asup
     on ac.call_id = asup.call_id
+left join seg
+    on ac.call_id = seg.id_appel
 qualify call_number = 1
