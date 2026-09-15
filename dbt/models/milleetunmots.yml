@@ -29,7 +29,7 @@ sources:
     database: MOTS_DW
     schema: FACT
     tables:
-      - name: super_table_anonymised
+      - name: super_table_anonymised2
 
   - name: seed
     database: MOTS_DW

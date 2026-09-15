@@ -1,5 +1,5 @@
 WITH base AS (
-    SELECT * FROM {{ source('fact_anonymised', 'super_table_anonymised') }}
+    SELECT * FROM {{ source('fact_anonymised', 'super_table_anonymised2') }}
 ),
 
 shared_cols AS (

@@ -35,6 +35,18 @@ cls as (
     SELECT * FROM {{ ref('child_life_status') }}
 ),
 
+scheduled_calls AS (
+    SELECT * FROM {{ ref('stg_1001mots_app__scheduled_calls') }}
+),
+
+events AS (
+    SELECT * FROM {{ ref('stg_1001mots_app__events') }}
+),
+
+parent_enfant AS (
+    SELECT * FROM {{ ref('parent_enfant') }}
+),
+
 -- CTE faisant la relation entre les parents, les enfants et la famille
 child_parent_family AS (
     SELECT 
@@ -58,8 +70,9 @@ child_parent_family AS (
 
 -- CTE permettant de ne garder que l'enfant principal de la famille défini comme étant le plus jeune et des attributs de cet enfant
 youngest_child AS (
-    SELECT 
+    SELECT
         ch.child_id,
+        ch.family_id,
         ch.group_id,
         ch.gender, 
         ch.date_birth as birthdate,
@@ -264,6 +277,43 @@ source AS (
         s.department
     FROM children_sources AS cs
     INNER JOIN sources AS s ON cs.source_id = s.source_id
+),
+
+-- CTE indiquant, par famille, si un RDV a été pris à chaque session d'appel
+-- (tous statuts confondus, RDV annulés inclus — même définition que has_booking dans sessions_with_booking)
+bookings AS (
+    SELECT
+        family_id,
+        MAX(CASE WHEN call_session = 0 THEN 1 ELSE 0 END) AS has_booking_call0,
+        MAX(CASE WHEN call_session = 1 THEN 1 ELSE 0 END) AS has_booking_call1,
+        MAX(CASE WHEN call_session = 2 THEN 1 ELSE 0 END) AS has_booking_call2,
+        MAX(CASE WHEN call_session = 3 THEN 1 ELSE 0 END) AS has_booking_call3
+    FROM scheduled_calls
+    GROUP BY family_id
+),
+
+-- CTE indiquant, par famille, si un RDV a été proposé à chaque session d'appel
+-- Proposition = SMS contenant un lien Calendly (même logique que calendly_sms dans sessions_with_booking)
+-- Imputation à la session selon date_occurred et les dates du groupe du plus jeune enfant :
+--   session 0 = SMS envoyé jusqu'à date_call0_end
+--   session N = SMS envoyé entre date_call(N-1)_end et date_callN_end
+booking_proposals AS (
+    SELECT
+        yc.family_id,
+        MAX(CASE WHEN e.date_occurred <= g.date_call0_end THEN 1 ELSE 0 END) AS has_booking_proposal_call0,
+        MAX(CASE WHEN e.date_occurred > g.date_call0_end AND e.date_occurred <= g.date_call1_end THEN 1 ELSE 0 END) AS has_booking_proposal_call1,
+        MAX(CASE WHEN e.date_occurred > g.date_call1_end AND e.date_occurred <= g.date_call2_end THEN 1 ELSE 0 END) AS has_booking_proposal_call2,
+        MAX(CASE WHEN e.date_occurred > g.date_call2_end AND e.date_occurred <= g.date_call3_end THEN 1 ELSE 0 END) AS has_booking_proposal_call3
+    FROM events AS e
+    INNER JOIN parent_enfant AS pe
+        ON pe.parent_id = e.related_id
+    INNER JOIN youngest_child AS yc
+        ON yc.family_id = pe.child_support_id
+    INNER JOIN groups_info AS g
+        ON g.group_id = yc.group_id
+    WHERE e.type = 'Events::TextMessage'
+      AND e.body ILIKE '%calendly%'
+    GROUP BY yc.family_id
 )
 
 -- Requête principale permettant de rassembler toutes les infos
@@ -373,6 +423,14 @@ SELECT distinct
     {{ get_call_attempt('f.call1_attempt') }} AS nb_of_tries_call1,
     {{ get_call_attempt('f.call2_attempt') }} AS nb_of_tries_call2,
     {{ get_call_attempt('f.call3_attempt') }} AS nb_of_tries_call3,
+    COALESCE(bk.has_booking_call0, 0) AS has_booking_call0,
+    COALESCE(bk.has_booking_call1, 0) AS has_booking_call1,
+    COALESCE(bk.has_booking_call2, 0) AS has_booking_call2,
+    COALESCE(bk.has_booking_call3, 0) AS has_booking_call3,
+    COALESCE(bp.has_booking_proposal_call0, 0) AS has_booking_proposal_call0,
+    COALESCE(bp.has_booking_proposal_call1, 0) AS has_booking_proposal_call1,
+    COALESCE(bp.has_booking_proposal_call2, 0) AS has_booking_proposal_call2,
+    COALESCE(bp.has_booking_proposal_call3, 0) AS has_booking_proposal_call3,
     COALESCE(p1.mid_term_rate, p2.mid_term_rate) AS mid_term_rate,
     COALESCE(p1.mid_term_reaction, p2.mid_term_reaction) AS mid_term_reaction,
     m2.name AS module2_name,
@@ -444,6 +502,10 @@ LEFT JOIN list_of_tags AS lot
     ON lot.family_id = cpf.family_id
 LEFT JOIN child_tags AS ct
     ON ct.child_id = yc.child_id
+LEFT JOIN bookings AS bk
+    ON bk.family_id = cpf.family_id
+LEFT JOIN booking_proposals AS bp
+    ON bp.family_id = cpf.family_id
 -- Jointures avec child_life_status pour les différents appels
 LEFT JOIN cls AS cls_call0
     ON cls_call0.item_id = yc.child_id
