@@ -291,6 +291,17 @@ pas mieux.
 round(ecart - sum(appels*ecart) over () / sum(appels) over (), 1) as ecart_centre
 ```
 
+## Le gradient entre sessions est déjà neutralisé
+
+La session 0 fait environ 7 points de mieux que les suivantes sur les appels OK
+(barre du vivier : 65,2 au call 0 contre 57,7 au call 2). **Ce gradient est absorbé par
+construction** : la projection compare chaque accompagnante à son historique sur la
+**même** session. Inutile de le corriger à la main.
+
+Deux nuances : sur les **missions** le gradient s'inverse au call 1 (63,1 contre 62,8 au
+call 0), donc ne pas généraliser ; et l'écart au pool est le **plus faible au call 0**
+(+0,2 contre +2,9 à +3,7), donc une analyse publiée au call 0 est conservatrice.
+
 ## La pondération par les volumes : correcte, mais son apport propre est faible
 
 Comparée à une moyenne simple des accompagnantes (chacune comptant pour une), la
