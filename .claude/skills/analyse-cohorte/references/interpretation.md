@@ -276,7 +276,37 @@ en 20-40 s, mais ce n'est pas tranché.
 
 ---
 
+# Deux réglages de lecture
+
+## Centrer sur la moyenne de l'année, pas sur zéro
+
+La projection se cale sur 13 mois glissants. Si l'ensemble du dispositif progresse,
+**toutes** les cohortes de l'année affichent un écart positif, et « +3 » n'est pas de la
+sur-performance mais la dérive de l'année. Sur 2026 : écart moyen pondéré de **+1,5 pt**
+brut et **+2,1** après neutralisation du canal. Une cohorte à +2 fait donc la moyenne,
+pas mieux.
+
+```sql
+-- écart centré = écart de la cohorte - moyenne pondérée de l'année
+round(ecart - sum(appels*ecart) over () / sum(appels) over (), 1) as ecart_centre
+```
+
+## La pondération par les volumes : correcte, mais son apport propre est faible
+
+Comparée à une moyenne simple des accompagnantes (chacune comptant pour une), la
+projection pondérée ne bouge que de −0,8 à +1,7 point selon les cohortes de 2026. La
+concentration est trop stable d'une cohorte à l'autre — la première accompagnante porte
+toujours 10 à 18 % des appels — pour que la pondération fasse la différence entre
+cohortes. On la garde parce qu'elle est juste, pas parce qu'elle est discriminante.
+
+Exception utile : sur 2026/05/18 elle ajoute +1,7 à la barre, ce qui **aggrave** son
+écart — ses gros volumes étaient tenus par des accompagnantes plutôt fortes.
+
+---
+
 # Ce qui a été établi sur le périmètre (à ne pas refaire)
+
+Les résultats chiffrés cohorte par cohorte sont dans `references/resultats-2026.md`.
 
 **L'effet accompagnante est réel, fort et persistant.** À cohorte et session égales,
 écart-type de 6,7 pts sur les appels OK (étendue −14,1 à +12,4) et 17,2 pts sur les

@@ -107,8 +107,18 @@ résidu est de 6,3 points, donc une cohorte basse n'appelle pas forcément d'exp
 part de l'écart imputable au mix de recrutement — le facteur le plus souvent en cause.
 Le même fichier récapitule ce qui a déjà été établi sur ce périmètre, à ne pas refaire.
 
+## Résultats déjà établis
+
+`references/resultats-2026.md` porte la décomposition chiffrée des treize cohortes de
+2026 et les verdicts par cohorte — instantané au 2026-09-22, à rafraîchir début 2027.
+Le consulter avant de relancer une analyse sur une cohorte de 2026 : elle y est
+probablement déjà.
+
 ## Seuils de lecture
 
+- **Comparer à la moyenne de l'année, pas à zéro.** La projection se cale sur 13 mois
+  glissants : si le dispositif progresse, toutes les cohortes affichent un écart positif.
+  Sur 2026, la moyenne pondérée est de +1,5 point brut et +2,1 après canal.
 - **Écart individuel** : en dessous de ±5 points, c'est du bruit. Le seuil de −5 pts
   filtre correctement ; à −3 pts on ramasse du bruit, à −8 pts on ne voit plus que les
   cas extrêmes.
