@@ -95,7 +95,7 @@ additive et exacte, pour les deux métriques. `08` isole seul l'effet du pool
 d'accompagnantes mobilisé.
 
 **7. Diagnostiquer — `references/interpretation.md` et `sql/diagnostic/`**
-Neuf hypothèses à tester dans un ordre précis, avec les requêtes courtes associées et
+Dix hypothèses à tester dans un ordre précis, avec les requêtes courtes associées et
 les repères chiffrés pour trancher. Le dossier `sql/diagnostic/` contient les douze
 requêtes correspondantes, chacune portant en tête son résultat — la plupart sont des
 hypothèses **écartées**, et c'est l'essentiel de leur valeur : ne pas les refaire. Son

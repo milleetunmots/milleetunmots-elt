@@ -4,7 +4,7 @@ Quand `02_projete_vs_realise.sql` montre une cellule nettement en dessous de sa
 projection, **commencer par `sql/diagnostic/d08_dispersion_du_residu.sql`** : la
 dispersion normale est de 6,3 points, et la cohorte la plus basse d'une année n'a pas
 forcément besoin d'une explication. Puis tester les hypothèses **dans cet ordre**.
-Chaque hypothèse a sa requête dans `sql/diagnostic/` — voir le README du dossier pour
+Les hypothèses 1 à 8 ont chacune leur requête dans `sql/diagnostic/` — voir le README du dossier pour
 l'index et les verdicts. Chacune est peu coûteuse et
 plusieurs peuvent être écartées en une requête.
 
@@ -186,16 +186,7 @@ Il n'existe par ailleurs **aucun champ structuré sur la maîtrise du français*
 tags contenant « bilingue » ou « parler » sont des campagnes ponctuelles, pas un
 attribut de famille.
 
-## 9. Les accompagnantes
-
-Vient en **dernier**, pas en premier. `03_contributions_accompagnantes.sql` tranche :
-si le top 3 porte moins de 50 % de l'écart et que plus de la moitié des accompagnantes
-sont du même côté, le phénomène est collectif et la cause est ailleurs.
-
-Sur `2026/04/20` S0 : 19 accompagnantes sur 22 en dessous de leur propre projection,
-top 3 à 39 % seulement. Il n'y avait personne à désigner.
-
-## 7. Le dispositif de RDV
+## 9. Le dispositif de RDV
 
 Le RDV a été **déployé au cours de 2026** — premiers RDV en février, 0 % au call 0 en
 janvier, 46,4 % en septembre. C'est un changement de dispositif en cours d'année : aucune
@@ -260,6 +251,15 @@ Ne pas suivre le taux « hors RDV ».
 
 ---
 
+## 10. Les accompagnantes
+
+Vient en **dernier**, pas en premier. `03_contributions_accompagnantes.sql` tranche :
+si le top 3 porte moins de 50 % de l'écart et que plus de la moitié des accompagnantes
+sont du même côté, le phénomène est collectif et la cause est ailleurs.
+
+Sur `2026/04/20` S0 : 19 accompagnantes sur 22 en dessous de leur propre projection,
+top 3 à 39 % seulement. Il n'y avait personne à désigner.
+
 # Piste ouverte : les transcriptions Aircall
 
 Au 2026-09-22, `stg_1001mots_app__aircall_call_transcriptions` n'est pas encore
@@ -276,7 +276,7 @@ en 20-40 s, mais ce n'est pas tranché.
 
 ---
 
-# Deux réglages de lecture
+# Trois réglages de lecture
 
 ## Centrer sur la moyenne de l'année, pas sur zéro
 
