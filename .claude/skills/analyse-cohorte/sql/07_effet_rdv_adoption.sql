@@ -19,10 +19,10 @@
 -- Limites : effectifs modestes par groupe (60 a 360 appels), incertitude de 5 a 8 pts
 -- par cohorte -- c'est la coherence entre cohortes qui porte le resultat. Et le test
 -- suppose que les familles sont reparties de facon comparable entre adoptantes et non
--- adoptantes au sein d'une cohorte ; un biais residuel subsiste si l'affectation suit
+-- adoptantes au sein d'une cohorte, un biais residuel subsiste si l'affectation suit
 -- le departement ou la langue. Non verifie.
 --
--- PARAM : remplacer '2026/%' ; call_session = 0 ; seuils 8 appels / cellule et
+-- PARAM : remplacer '2026/%', call_session = 0, seuils 8 appels / cellule et
 -- 60 appels / groupe pour l'affichage par cohorte.
 with base as (
     select

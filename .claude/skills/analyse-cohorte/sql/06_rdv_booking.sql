@@ -12,7 +12,7 @@
 -- 61 % en septembre) comme une degradation : a mesure que l'adoption monte, ce groupe
 -- devient un residu de plus en plus negativement selectionne. Sa baisse est un artefact
 -- de composition.
--- PARAM : remplacer '2026/%' ; retirer "where cs = 0" pour toutes sessions confondues.
+-- PARAM : remplacer '2026/%', retirer "where cs = 0" pour toutes sessions confondues.
 with base as (
     select st.family_id, st.child_id, st.cohort_name,
         st.call_0_status, st.call1_status, st.call2_status, st.call3_status,

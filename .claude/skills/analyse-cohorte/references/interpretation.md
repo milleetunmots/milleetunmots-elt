@@ -1,7 +1,11 @@
 # Diagnostiquer un écart de cohorte
 
 Quand `02_projete_vs_realise.sql` montre une cellule nettement en dessous de sa
-projection, tester les hypothèses **dans cet ordre**. Chacune est peu coûteuse et
+projection, **commencer par `sql/diagnostic/d08_dispersion_du_residu.sql`** : la
+dispersion normale est de 6,3 points, et la cohorte la plus basse d'une année n'a pas
+forcément besoin d'une explication. Puis tester les hypothèses **dans cet ordre**.
+Chaque hypothèse a sa requête dans `sql/diagnostic/` — voir le README du dossier pour
+l'index et les verdicts. Chacune est peu coûteuse et
 plusieurs peuvent être écartées en une requête.
 
 ## 1. Le calendrier (vacances, ponts, période creuse)
@@ -130,7 +134,25 @@ aboutissent et ne deviennent pas des conversations. Cette signature **invalide
 l'hypothèse des numéros morts** : les lignes répondent, et les accompagnantes ont
 appelé davantage que la normale (2,76 tentatives contre 2,44).
 
-## 6. L'heure et le jour d'appel
+## 6. La famille a-t-elle « oublié » l'accompagnement ?
+
+**Testé, écarté.** Le délai entre la création de la fiche et le premier appel sortant
+ne prédit rien : 66,8 % d'appels OK à moins d'un mois, 63,0 % à 1-2 mois, 69,0 % à
+2-3 mois, 62,4 % à 3-5 mois et **71,6 % au-delà de 5 mois** — le groupe le plus
+« oublié » est le meilleur.
+
+Et les cohortes d'avril ont été appelées **plus vite** que les autres : délai médian de
+31 jours contre 39, moyenne de 35 contre 56, et seulement 3,2 % de familles au-delà de
+3 mois contre 16,2 %. Elles font quand même 15 points de moins de conversations longues.
+
+**Limite à connaître** : `support_creation_date` est la date de création de la fiche
+dans l'app, donc **la date d'import** pour un lot. Elle ne mesure pas depuis quand la
+famille s'est inscrite auprès du partenaire. Ce test écarte « la famille a oublié depuis
+son inscription dans l'app », il n'écarte pas « le fichier partenaire était ancien ».
+
+Requête : `sql/diagnostic/d09_delai_creation_premier_appel.sql`.
+
+## 7. L'heure et le jour d'appel
 
 **Testé, sans effet.** La répartition horaire des appels est quasi identique entre
 cohortes, et surtout le taux de conversation longue varie très peu selon le créneau :
@@ -147,7 +169,7 @@ exclut un effet de composition horaire.
 hour(convert_timezone('UTC','Europe/Paris', a.started_at))
 ```
 
-## 7. Le bilinguisme
+## 8. Le bilinguisme
 
 **Testé, sans effet — et attention au piège.** Sur les cohortes 2026, les familles
 bilingues font **74,5 %** d'appels OK contre **72,5 %** pour les non bilingues : aucun
@@ -164,7 +186,7 @@ Il n'existe par ailleurs **aucun champ structuré sur la maîtrise du français*
 tags contenant « bilingue » ou « parler » sont des campagnes ponctuelles, pas un
 attribut de famille.
 
-## 8. Les accompagnantes
+## 9. Les accompagnantes
 
 Vient en **dernier**, pas en premier. `03_contributions_accompagnantes.sql` tranche :
 si le top 3 porte moins de 50 % de l'écart et que plus de la moitié des accompagnantes

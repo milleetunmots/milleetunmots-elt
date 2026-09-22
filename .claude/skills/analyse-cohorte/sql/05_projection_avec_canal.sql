@@ -1,7 +1,7 @@
 -- 05 | Projection integrant le CANAL DE RECRUTEMENT (caf / pmi / local_partner / bao).
 -- Sert a savoir quelle part d'un ecart vient du mix de recrutement de la cohorte
 -- plutot que de la performance des accompagnantes.
--- Historique par accompagnante x session x canal sur 13 mois glissants ; repli sur
+-- Historique par accompagnante x session x canal sur 13 mois glissants, repli sur
 -- l'historique tous canaux quand le canal a moins de 20 appels d'historique
 -- (colonne pct_canal_dispo = part du volume ayant un historique canal propre).
 -- L'ecart_residuel est ce qui reste APRES neutralisation du mix de recrutement.

@@ -2,7 +2,7 @@
 -- et quelle part des appels de la cohorte elles portent.
 -- La colonne qui compte est pct_appels_sous_5pts_*, pas le nombre d'accompagnantes :
 -- environ la moitie est mecaniquement sous projection a -0,5 pt, ce qui ne veut rien dire.
--- PARAM : remplacer '2026/%' (4 occurrences) ; seuil -5 pts (4 occurrences).
+-- PARAM : remplacer '2026/%' (4 occurrences), seuil -5 pts (4 occurrences).
 -- Résumé par cohorte : combien d'accompagnantes sous leur projection,
 -- et quelle part des appels de la cohorte elles portent
 -- Projection = performance des accompagnantes de la cellule sur les 13 mois

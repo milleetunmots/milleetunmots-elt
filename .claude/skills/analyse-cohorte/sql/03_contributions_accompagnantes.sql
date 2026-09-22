@@ -1,5 +1,5 @@
 -- 03 | Decomposition de l'ecart d'une cellule en contributions par accompagnante.
--- contribution = part du volume x ecart individuel ; leur somme = l'ecart de la cellule.
+-- contribution = part du volume x ecart individuel, leur somme = l'ecart de la cellule.
 -- Repond a "qui pese" et "est-ce reparti entre les accompagnantes ou tres localise".
 -- Filtree sur une cellule et triee par contribution_ok : waterfall des contributeurs.
 -- Agregee par cohorte x session : tableau reparti/localise.

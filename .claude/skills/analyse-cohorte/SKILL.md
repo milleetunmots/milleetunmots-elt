@@ -89,10 +89,21 @@ tenir compte. `06` donne les taux de proposition, de prise de RDV et de transfor
 `07` estime l'effet réel du dispositif hors biais de sélection. Lire le piège ci-dessous
 avant d'interpréter quoi que ce soit sur les RDV.
 
-**6. Diagnostiquer — `references/interpretation.md`**
-Huit hypothèses à tester dans un ordre précis, avec les requêtes courtes associées et
-les repères chiffrés pour trancher. Contient aussi la piste ouverte sur les
-transcriptions Aircall, à reprendre dès que la table sera alimentée. `sql/05_projection_avec_canal.sql` quantifie la
+**6. Décomposer entièrement — `sql/08_effet_pool.sql` puis `sql/09_decomposition_complete.sql`**
+La chaîne complète : `réel = barre du vivier + effet pool + effet canal + résidu`,
+additive et exacte, pour les deux métriques. `08` isole seul l'effet du pool
+d'accompagnantes mobilisé.
+
+**7. Diagnostiquer — `references/interpretation.md` et `sql/diagnostic/`**
+Neuf hypothèses à tester dans un ordre précis, avec les requêtes courtes associées et
+les repères chiffrés pour trancher. Le dossier `sql/diagnostic/` contient les douze
+requêtes correspondantes, chacune portant en tête son résultat — la plupart sont des
+hypothèses **écartées**, et c'est l'essentiel de leur valeur : ne pas les refaire. Son
+README sert d'index. Contient aussi la piste ouverte sur les transcriptions Aircall,
+à reprendre dès que la table sera alimentée.
+
+Commencer par `sql/diagnostic/d08_dispersion_du_residu.sql` : la dispersion normale du
+résidu est de 6,3 points, donc une cohorte basse n'appelle pas forcément d'explication. `sql/05_projection_avec_canal.sql` quantifie la
 part de l'écart imputable au mix de recrutement — le facteur le plus souvent en cause.
 Le même fichier récapitule ce qui a déjà été établi sur ce périmètre, à ne pas refaire.
 

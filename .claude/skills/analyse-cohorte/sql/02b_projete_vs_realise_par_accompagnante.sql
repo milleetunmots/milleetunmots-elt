@@ -1,7 +1,7 @@
 -- 02b | Projete vs realise PAR ACCOMPAGNANTE sur un perimetre de cohortes.
 -- Chaque accompagnante est comparee a SA propre projection : qui a change, et de combien.
 -- Lire ecart_* (la derive) ET reel_* (le niveau) ensemble : ce n'est pas la meme question.
--- PARAM : remplacer '2026/%' (4 occurrences) ; seuil de volume : nb_appels >= 100.
+-- PARAM : remplacer '2026/%' (4 occurrences), seuil de volume : nb_appels >= 100.
 -- Projeté vs réalisé PAR ACCOMPAGNANTE (cohortes 2026)
 -- Projection = performance des accompagnantes de la cellule sur les 13 mois
 -- PRÉCÉDANT la fin de la session, même session, cohorte évaluée exclue.
