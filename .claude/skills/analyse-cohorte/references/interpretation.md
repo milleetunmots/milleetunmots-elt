@@ -280,6 +280,12 @@ en 20-40 s, mais ce n'est pas tranché.
 
 ## Centrer sur la moyenne de l'année, pas sur zéro
 
+La fenêtre de 13 mois retarde volontairement sur la tendance — c'est le prix d'une
+couverture à 100 %. Conséquence directe : l'année entière flotte au-dessus de zéro, et
+il faut recentrer. Une fenêtre de 6 mois ramènerait la dérive de +2,38 à +0,74 mais
+coûterait 7 points de couverture, sans gain de précision (écart-type 6,12 contre 6,32).
+L'arbitrage est documenté dans l'en-tête de `sql/02_projete_vs_realise.sql`.
+
 La projection se cale sur 13 mois glissants. Si l'ensemble du dispositif progresse,
 **toutes** les cohortes de l'année affichent un écart positif, et « +3 » n'est pas de la
 sur-performance mais la dérive de l'année. Sur 2026 : écart moyen pondéré de **+1,5 pt**

@@ -2,7 +2,19 @@
 -- Projection = performance des accompagnantes de la cellule sur les 13 mois PRECEDANT
 -- la fin de la session, meme session, cohorte evaluee exclue, ponderee par leur volume.
 -- PARAM : remplacer '2026/%' (3 occurrences) par la cohorte ou l'annee voulue.
--- Fenetre : dateadd(month, -13, c.fin) -- passer a -6 pour coller a la tendance recente.
+-- Fenetre : dateadd(month, -13, c.fin). ARBITRAGE MESURE, ne pas changer a la legere.
+-- Compare a une fenetre de 6 mois sur les memes 128 cellules :
+--   couverture       100 %   contre 93 % a 6 mois (jusqu'a 87 % sur les cohortes de janvier)
+--   ecart-type       6,32    contre 6,12 -- 3 % d'ecart, negligeable
+--   derive moyenne   +2,38   contre +0,74
+-- La fenetre courte n'est PAS plus bruitee, contrairement a ce qu'on pourrait croire :
+-- la dispersion vient de la variation reelle entre lots de familles, pas de la longueur
+-- de la fenetre. Son seul avantage est le centrage -- a 6 mois, "zero" se lit directement
+-- comme "conforme a l'attendu", sans avoir a recentrer sur la moyenne de l'annee.
+-- On garde 13 mois pour la couverture a 100 % et la stabilite entre relances.
+-- Utile en CONTROLE : relancer a -6 et comparer. Quand les deux fenetres divergent
+-- nettement sur une cohorte (2026/03/23 passe de -1,9 a -5,9), c'est que la performance
+-- de reference a bouge entre les deux periodes -- information en soi.
 -- Projeté vs réalisé par cohorte x session
 -- Projection = performance des accompagnantes de la cellule sur les 13 mois
 -- PRÉCÉDANT la fin de la session, même session, cohorte évaluée exclue.
