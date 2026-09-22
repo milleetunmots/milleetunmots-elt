@@ -90,8 +90,9 @@ tenir compte. `06` donne les taux de proposition, de prise de RDV et de transfor
 avant d'interpréter quoi que ce soit sur les RDV.
 
 **6. Diagnostiquer — `references/interpretation.md`**
-Six hypothèses à tester dans un ordre précis, avec les requêtes courtes associées et
-les repères chiffrés pour trancher. `sql/05_projection_avec_canal.sql` quantifie la
+Huit hypothèses à tester dans un ordre précis, avec les requêtes courtes associées et
+les repères chiffrés pour trancher. Contient aussi la piste ouverte sur les
+transcriptions Aircall, à reprendre dès que la table sera alimentée. `sql/05_projection_avec_canal.sql` quantifie la
 part de l'écart imputable au mix de recrutement — le facteur le plus souvent en cause.
 Le même fichier récapitule ce qui a déjà été établi sur ce périmètre, à ne pas refaire.
 
@@ -118,6 +119,16 @@ Le même fichier récapitule ce qui a déjà été établi sur ce périmètre, �
   restitution nominative.
 - **Un compte générique `contact@…` apparaît dans les données.** L'exclure ou le
   signaler.
+- **`is_bilingue` NULL n'est pas une population, c'est un artefact.** Le champ est
+  renseigné pendant l'appel 0, donc un NULL signale surtout que l'appel n'a pas abouti
+  (48,7 % d'OK contre 72-75 % chez les renseignés). L'utiliser comme variable
+  explicative sans écarter les NULL revient à expliquer le résultat par lui-même. Le
+  bilinguisme en soi n'a aucun effet : 74,5 % pour les bilingues, 72,5 % pour les autres.
+- **`answered` d'Aircall ne veut pas dire « quelqu'un a décroché ».** Il vaut vrai dans
+  94,6 % des cas avec une médiane de 63 s. Pour la joignabilité, passer par `duration`.
+- **Ne pas sur-expliquer la cohorte la plus basse.** La dispersion normale du résidu est
+  de 6,3 points ; sur 41 cellules, le minimum attendu par hasard est d'environ −13. Deux
+  hypothèses ont déjà été construites puis invalidées sur le dossier d'avril 2026.
 - **La fenêtre de 13 mois retarde sur les tendances structurelles.** Le taux de PM en
   session 2 est passé de 40 % (2025) à 57 % (2026) : la projection produit donc un
   écart positif systématique de +9 à +19 pts sur ces cellules, qui mesure la

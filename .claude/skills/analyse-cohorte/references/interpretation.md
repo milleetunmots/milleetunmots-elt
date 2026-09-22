@@ -76,8 +76,13 @@ contre 12), mais à canal caf identique elles **sur-performaient** sur les moins
 
 ## 5. La qualité du fichier source
 
-Signature à chercher, **à canal constant** : hausse du KO, hausse des « Numéro erroné »,
-taux de saisie inchangé (les appels ont bien été passés, ils n'ont pas abouti).
+**Le statut `Numéro erroné` est inexploitable.** Il est renseigné de façon trop
+irrégulière : 0 % sur certaines cohortes, 2,5 % sur 2026/08/24 qui est une *bonne*
+cohorte. Le retirer du dénominateur déplace 2026/04/20 de 49,1 à 49,8 % — 0,7 point
+sur un résidu de 11,6. Passer par Aircall à la place (voir ci-dessous).
+
+Signature à chercher, **à canal constant** : hausse du KO, taux de saisie inchangé
+(les appels ont bien été passés, ils n'ont pas abouti).
 
 ```sql
 select grp, coalesce(nullif(trim(call_0_status),''),'(vide)') statut, count(*) n,
@@ -104,7 +109,62 @@ Repère : 52 à 91 jours de création distincts et 4 à 25 % sur le plus gros jo
 régime normal. `2026/04/06` était à 26 jours et **56 % sur un seul jour** — import en
 lot caractérisé.
 
-## 6. Les accompagnantes
+### Le bon indicateur de joignabilité : Aircall, pas le statut d'appel
+
+`stg_1001mots_app__aircall_calls` porte `duration` et `answered`. **`answered` est
+inutilisable** : il vaut vrai dans 94,6 % des cas avec une médiane de 63 s — il signale
+que l'appel a abouti sur le réseau, pas qu'un humain a répondu. Utiliser la **durée
+maximale par famille × session** :
+
+| Classe | Seuil | Lecture |
+|---|---|---|
+| Échec technique | `dmax < 10 s` | Ligne morte. Repère : 0,3-0,4 % partout |
+| Pas de conversation | `dmax < 60 s` | Sonnerie, répondeur |
+| Conversation courte | 60 s – 5 min | Échange qui ne prend pas |
+| Conversation longue | `dmax >= 300 s` | Le vrai appel. ~92-95 % d'OK |
+
+La courbe par seuil est plus informative qu'un seuil unique : sur les cohortes d'avril,
+le taux de décrochage est **identique** aux autres (95,2 % contre 95,4 %) et l'écart se
+creuse avec la durée — **−3,8 pts à 30 s, −6,8 à 60 s, −9,6 à 120 s**. Les appels
+aboutissent et ne deviennent pas des conversations. Cette signature **invalide
+l'hypothèse des numéros morts** : les lignes répondent, et les accompagnantes ont
+appelé davantage que la normale (2,76 tentatives contre 2,44).
+
+## 6. L'heure et le jour d'appel
+
+**Testé, sans effet.** La répartition horaire des appels est quasi identique entre
+cohortes, et surtout le taux de conversation longue varie très peu selon le créneau :
+24,1 % avant 18 h à 29,6 % entre 12 h et 14 h, sur les cohortes 2026 hors avril. Un
+écart de 5 points entre le meilleur et le pire créneau ne peut pas porter un résidu de
+10 points.
+
+Sur les cohortes d'avril, le déficit est présent **dans tous les créneaux sans
+exception** (15,0 à 21,8 % de conversations longues contre 24,1 à 29,6 %), ce qui
+exclut un effet de composition horaire.
+
+```sql
+-- heure locale : les timestamps aircall sont en UTC
+hour(convert_timezone('UTC','Europe/Paris', a.started_at))
+```
+
+## 7. Le bilinguisme
+
+**Testé, sans effet — et attention au piège.** Sur les cohortes 2026, les familles
+bilingues font **74,5 %** d'appels OK contre **72,5 %** pour les non bilingues : aucun
+handicap, plutôt l'inverse. Le bilinguisme n'est pas un facteur de performance.
+
+Le piège est ailleurs : les familles dont `is_bilingue` est **NULL** tombent à
+**48,7 %**. Cette catégorie n'est pas une population, c'est un **artefact** — le champ
+est renseigné pendant l'appel 0, donc un NULL signale surtout que l'appel n'a pas
+abouti. Le corrélat le montre : 68,8 % de conversations dépassant 60 s chez les NULL
+contre 84,5 % chez les renseignés. **Ne jamais utiliser `is_bilingue` comme variable
+explicative sans écarter les NULL**, sinon on explique le résultat par lui-même.
+
+Il n'existe par ailleurs **aucun champ structuré sur la maîtrise du français**. Les
+tags contenant « bilingue » ou « parler » sont des campagnes ponctuelles, pas un
+attribut de famille.
+
+## 8. Les accompagnantes
 
 Vient en **dernier**, pas en premier. `03_contributions_accompagnantes.sql` tranche :
 si le top 3 porte moins de 50 % de l'écart et que plus de la moitié des accompagnantes
@@ -178,6 +238,22 @@ Ne pas suivre le taux « hors RDV ».
 
 ---
 
+# Piste ouverte : les transcriptions Aircall
+
+Au 2026-09-22, `stg_1001mots_app__aircall_call_transcriptions` n'est pas encore
+exploitable. Dès qu'elle l'est, c'est le test décisif du dossier avril.
+
+**La question exacte** : sur les conversations de **1 à 2 minutes** des cohortes
+`2026/04/06`, `2026/04/20` et `2026/05/18`, l'interlocuteur est-il le parent attendu ?
+
+**Ce qu'elle départage** : deux hypothèses produisent la même signature dans les données
+actuelles — des **numéros réattribués** (un tiers décroche, l'échange tourne court) ou
+des **familles moins engagées** (le parent décroche et ne donne pas suite). Les durées
+de 1 à 2 minutes plaident plutôt pour la seconde, un mauvais interlocuteur raccrochant
+en 20-40 s, mais ce n'est pas tranché.
+
+---
+
 # Ce qui a été établi sur le périmètre (à ne pas refaire)
 
 **L'effet accompagnante est réel, fort et persistant.** À cohorte et session égales,
@@ -211,7 +287,15 @@ plus de KO, deux fois plus de numéros erronés, déficit concentré sur les enf
 du fichier CAF. Non vérifiable dans l'entrepôt : il faudrait la date de constitution du
 fichier côté CAF.
 
-**Le cas 2026/05/18**, qui résistait au diagnostic, s'explique par le RDV : son 61,7 %
-global repose sur 36,7 % de RDV pris. Sur les familles des accompagnantes non
-adoptantes, elle serait bien plus basse. C'est une cohorte faible dont le dispositif a
-masqué la faiblesse.
+**Le cas 2026/05/18**, qui résistait au diagnostic, s'explique en partie par le RDV :
+son 61,7 % global repose sur 36,7 % de RDV pris. Elle partage par ailleurs la signature
+Aircall d'avril, en plus atténué (23,6 % de conversations longues, troisième plus bas
+de l'année) — ce qui la rattache au même phénomène.
+
+**Mise en garde statistique.** La dispersion normale du résidu est de **6,3 points** sur
+128 cellules, dont 27 % de la variance vient du seul bruit d'échantillonnage (249 appels
+par cellule en moyenne). Un résidu de −11,6 n'est donc qu'à 1,8 écart-type, et sur
+41 cellules le minimum attendu par le seul hasard est d'environ −13 points. **Ne pas
+sur-expliquer une cohorte parce qu'elle est la plus basse** : sur ce dossier, deux
+hypothèses ont déjà été construites puis invalidées (le calendrier, puis les numéros
+morts).
