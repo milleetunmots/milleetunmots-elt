@@ -1,0 +1,79 @@
+version: 2
+
+models:
+  - name: family_enrollment
+    description: >
+      Une ligne par famille : ce que le formulaire d'inscription déclare sur ses
+      motivations et son multilinguisme. Les deux questions sont facultatives.
+      Les raisons d'inscription ne sont collectées que depuis le 2026-03-27
+      (var enrollment_form_start_date) : filtrer sur is_after_enrollment_form_launch
+      avant de calculer un taux de remplissage.
+    columns:
+      - name: family_id
+        description: Identifiant de la famille (child_supports.id).
+        tests:
+          - unique
+          - not_null
+      - name: is_after_enrollment_form_launch
+        description: >
+          La famille s'est-elle inscrite après la mise en ligne des questions ?
+          Dénominateur de tout taux de remplissage des raisons d'inscription.
+      - name: age_bucket_at_registration
+        description: >
+          Tranche d'âge du cadet à l'inscription, dans la classification
+          historique du projet (macro compute_age_in_month) : A/ <3 mois,
+          B/ 3-12, C/ 12-18, D/ 18-24, E/ 24-30, F/ >30. Pour une lecture en
+          trois paliers, regrouper A+B / C+D / E+F.
+      - name: enrollment_reasons
+        description: >
+          Tableau brut des options cochées, tel que saisi. Les libellés varient
+          selon l'âge de l'enfant ("mon bébé" / "mon enfant") : pour compter,
+          passer par family_enrollment_reasons, qui les normalise.
+      - name: has_enrollment_reasons
+        description: La famille a-t-elle coché au moins une raison ?
+      - name: is_multilingual
+        description: >
+          true / false / null. Dérivé de is_bilingual_current, qui existe depuis
+          2022 et n'est donc pas une nouvelle donnée. Renseigné soit au formulaire, soit
+          plus tard par l'accompagnante au call 0 : les deux modes de saisie sont
+          mélangés. null tant que personne n'a répondu.
+      - name: is_multilingual_known
+        description: >
+          La question a-t-elle reçu une réponse ? Dénominateur de la part de
+          familles multilingues.
+      - name: second_language_clean
+        description: >
+          Langue déclarée, en minuscules. Champ libre et très dispersé
+          (720 libellés distincts pour 1 198 réponses au 2026-09-29) : à
+          regrouper avant tout usage en BI, "arabe", "arabe marocain" et
+          "arabe algérien" étant comptés séparément.
+
+  - name: family_enrollment_reasons
+    description: >
+      Table de liaison : une ligne par couple (famille, raison cochée). Forme
+      attendue par la BI pour une question à choix multiples. Les familles
+      cochent 2,6 raisons en moyenne, donc les pourcentages par raison ne
+      somment pas à 100 %. Compter en count(distinct family_id).
+    columns:
+      - name: family_id
+        description: Identifiant de la famille.
+        tests:
+          - not_null
+      - name: is_after_enrollment_form_launch
+        description: >
+          À filtrer avec la même valeur que le dénominateur pris dans
+          family_enrollment : une poignée de familles inscrites avant le
+          2026-03-27 ont des raisons renseignées et décaleraient le calcul.
+      - name: reason_raw
+        description: Libellé exact coché dans le formulaire, avant normalisation.
+      - name: reason_label
+        description: >
+          Libellé normalisé, insensible à la reformulation du formulaire selon
+          l'âge de l'enfant. C'est la colonne sur laquelle grouper. Préfixée
+          d'une lettre de tri reprenant l'ordre de fréquence au 2026-09-29.
+        tests:
+          - not_null
+      - name: is_free_text_reason
+        description: >
+          La réponse vient-elle du champ libre "Autre" ? Ces lignes sont des
+          verbatims uniques (38 au 2026-09-29), à exclure des comptages par option.

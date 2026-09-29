@@ -8,6 +8,22 @@ child_supports as (
     from {{ ref('stg_1001mots_app__child_supports') }}
 ),
 
+family_enrollment as (
+    select *
+    from {{ ref('family_enrollment') }}
+),
+
+-- Raisons d'inscription remises à plat en une colonne lisible.
+-- Même forme que child_tag_list : pratique pour lire une ligne, inutilisable
+-- pour compter. Pour compter par raison, passer par family_enrollment_reasons.
+enrollment_reasons_agg as (
+    select
+        family_id,
+        listagg(reason_label, ', ') within group (order by reason_label) as enrollment_reasons_list
+    from {{ ref('family_enrollment_reasons') }}
+    group by family_id
+),
+
 children_sources as (
     select *
     from {{ ref('stg_1001mots_app__children_sources') }}
@@ -208,6 +224,23 @@ select
     -- age category
     child_age_in_month,
 
+    -- formulaire d'inscription
+    -- Attention au grain : mecene est à la maille enfant, ces colonnes sont à la
+    -- maille famille. Une fratrie de deux enfants porte deux fois les mêmes
+    -- raisons. Compter en count(distinct family_id), jamais en count(*).
+    fe.has_enrollment_reasons,
+    fe.nb_enrollment_reasons,
+    era.enrollment_reasons_list,
+    -- Les raisons ne sont collectées que depuis le 2026-03-27 : filtrer là-dessus
+    -- pour tout taux de remplissage, sinon le dénominateur est faussé.
+    fe.is_after_enrollment_form_launch,
+    -- is_bilingual existe depuis 2022, mais est renseigné soit à l'inscription,
+    -- soit plus tard par l'accompagnante au call 0. is_multilingual est null
+    -- tant que personne n'a répondu : filtrer sur is_multilingual_known.
+    fe.is_multilingual,
+    fe.is_multilingual_known,
+    fe.second_language_clean,
+
     -- accompagnement indicators
     
     -- accompagnement indicators N-2
@@ -239,3 +272,7 @@ left join child_tags ct
     on ct.child_id = cl.child_id
 left join child_support_tags cst
     on cst.family_id = cpf.family_id
+left join family_enrollment fe
+    on fe.family_id = cpf.family_id
+left join enrollment_reasons_agg era
+    on era.family_id = cpf.family_id

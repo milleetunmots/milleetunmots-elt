@@ -14,6 +14,10 @@ quoting:
 
 vars:
   daily_company_start_date: to_date('2022/01/01', 'yyyy/mm/dd') # Company daily table start date
+  # Date de mise en ligne des questions "raisons d'inscription" et "langue parlée"
+  # dans le formulaire d'inscription. Avant, la question n'était pas posée :
+  # tout taux de remplissage doit filtrer là-dessus.
+  enrollment_form_start_date: to_date('2026/03/27', 'yyyy/mm/dd')
 
 tests:
   +store_failures: true

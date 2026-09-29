@@ -75,6 +75,22 @@ select
     coalesce(to_date(nullif(object_json:created_at::string, '')), to_date(nullif(source.created_at::string, ''))) as date_created,
     coalesce(to_date(nullif(object_json:updated_at::string, '')), to_date(nullif(source.updated_at::string, ''))) as date_updated,
     coalesce(object_json:is_bilingual::string, source.is_bilingual::string) as is_bilingual,
+    -- Données du formulaire d'inscription, collectées depuis le 2026-03-27.
+    -- Elles sont lues directement dans source, sans passer par object_json :
+    -- le `object` de PaperTrail contient l'état AVANT la dernière modification,
+    -- donc le coalesce utilisé pour les autres colonnes renverrait un tableau
+    -- vide pour toute famille modifiée après avoir rempli le formulaire
+    -- (345 des 1 545 familles répondantes au 2026-09-29).
+    -- La source est toujours au moins aussi fraîche : aucun cas inverse constaté.
+    source.enrollment_reasons as enrollment_reasons,
+    -- Même problème sur is_bilingual, qui existe pourtant de longue date :
+    -- la colonne historique ci-dessus est périmée pour 345 des 2 746 familles
+    -- inscrites depuis le 2026-03-27, et sous-estime le taux de remplissage
+    -- (1 608 renseignées au lieu de 1 953). Elle est laissée telle quelle pour
+    -- ne pas déplacer les chiffres des modèles existants ; is_bilingual_current
+    -- est la valeur à jour, à utiliser pour toute nouvelle analyse.
+    source.is_bilingual::string as is_bilingual_current,
+    nullif(trim(source.second_language::string), '') as second_language,
     coalesce(object_json:module2_chosen_by_parents_id::integer, source.module2_chosen_by_parents_id::integer) as module2_chosen_by_parents_id,
     coalesce(object_json:module3_chosen_by_parents_id::integer, source.module3_chosen_by_parents_id::integer) as module3_chosen_by_parents_id,
     coalesce(object_json:module4_chosen_by_parents_id::integer, source.module4_chosen_by_parents_id::integer) as module4_chosen_by_parents_id,
