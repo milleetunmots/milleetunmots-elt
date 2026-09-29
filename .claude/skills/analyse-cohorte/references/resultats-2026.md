@@ -1,6 +1,6 @@
 # Résultats 2026 — décomposition des cohortes
 
-Instantané au **2026-09-22**, au call 0 (les cohortes n'ont pas le même nombre de
+Instantané au **2026-09-29**, au call 0 (les cohortes n'ont pas le même nombre de
 sessions terminées, un taux « toutes sessions » ne se compare pas). Produit par
 `sql/09_decomposition_complete.sql`.
 
@@ -12,19 +12,19 @@ La chaîne est additive et exacte à l'arrondi près.
 
 | Cohorte | Barre vivier | Pool | Canal | Résidu | Réel | % RDV pris | % appels chez adoptantes |
 |---|---|---|---|---|---|---|---|
-| 2026/01/12 | 65,6 | -2,8 | +1,2 | **+6,3** | 70,3 | 0,0 | 21 |
+| 2026/01/12 | 65,7 | -2,9 | +1,3 | **+6,2** | 70,3 | 0,0 | 21 |
 | 2026/01/26 | 65,9 | -0,6 | +1,1 | **+2,7** | 69,1 | 0,0 | 0 |
 | 2026/02/09 | 66,0 | +0,5 | -0,3 | **-2,6** | 63,6 | 0,0 | 18 |
 | 2026/02/23 | 66,0 | -2,4 | +1,4 | **-0,7** | 64,3 | 2,9 | 8 |
 | 2026/03/09 | 65,7 | -1,9 | +0,2 | **+3,3** | 67,3 | 5,3 | 26 |
-| 2026/03/23 | 65,7 | +1,6 | -1,2 | **-2,0** | 64,1 | 3,3 | 5 |
-| 2026/04/06 | 65,7 | -1,0 | -3,4 | **-4,0** | 57,3 | 10,3 | 34 |
+| 2026/03/23 | 65,7 | +1,6 | -1,1 | **-2,1** | 64,1 | 3,3 | 5 |
+| 2026/04/06 | 65,8 | -1,1 | -3,4 | **-4,0** | 57,3 | 10,3 | 34 |
 | 2026/04/20 | 65,4 | -0,7 | -4,1 | **-11,6** | 49,0 | 21,4 | 54 |
-| 2026/05/04 | 64,2 | +0,5 | +0,4 | **+3,4** | 68,5 | 20,7 | 53 |
-| 2026/05/18 | 64,5 | +0,9 | -0,5 | **-3,2** | 61,7 | 36,7 | 83 |
+| 2026/05/04 | 64,2 | +0,6 | +0,5 | **+3,2** | 68,5 | 20,7 | 53 |
+| 2026/05/18 | 64,5 | +0,8 | -0,5 | **-3,1** | 61,7 | 36,7 | 83 |
 | 2026/06/01 | 64,3 | +0,7 | -2,0 | **+4,4** | 67,4 | 37,1 | 85 |
-| 2026/08/24 | 65,1 | +0,4 | +3,2 | **+0,2** | 68,9 | 37,9 | 75 |
-| 2026/09/07 | 65,4 | +2,7 | -0,8 | **+6,7** | 74,0 | 46,4 | 87 |
+| 2026/08/24 | 65,1 | +0,5 | +3,1 | **-0,1** | 68,6 | 37,9 | 77 |
+| 2026/09/07 | 65,4 | +1,5 | -0,6 | **+2,4** | 68,7 | 43,5 | 87 |
 
 ## Taux de petites missions
 
@@ -41,8 +41,8 @@ La chaîne est additive et exacte à l'arrondi près.
 | 2026/05/04 | 62,1 | +0,5 | +0,2 | **+2,3** | 65,1 |
 | 2026/05/18 | 62,4 | +0,9 | +1,0 | **+4,9** | 69,2 |
 | 2026/06/01 | 62,6 | +1,6 | -0,6 | **+3,6** | 67,2 |
-| 2026/08/24 | 63,6 | +3,6 | +1,0 | **-1,9** | 66,3 |
-| 2026/09/07 | 63,8 | +1,7 | -0,2 | **+0,7** | 66,0 |
+| 2026/08/24 | 63,6 | +3,9 | +1,0 | **-1,9** | 66,6 |
+| 2026/09/07 | 63,8 | +1,4 | -0,1 | **-0,5** | 64,6 |
 
 ## Le gradient entre sessions
 
@@ -101,14 +101,21 @@ seul hasard est d'environ −13 points.
 
 **Une seule cellule de 2026 sort vraiment : 2026/04/20 au call 0**, à −11,6 sur les
 appels OK et −9,4 sur les missions — la seule cohorte où les deux métriques décrochent
-ensemble. Tout le reste tient dans la dispersion normale, y compris les résidus positifs
-de 2026/09/07 (+6,7) et 2026/01/12 (+6,3) que j'aurais volontiers présentés comme des
-sur-performances.
+ensemble. Tout le reste tient dans la dispersion normale, y compris le résidu positif
+de 2026/01/12 (+6,2) qu'on aurait volontiers présenté comme une sur-performance.
+
+**Leçon du 2026-09-29 : ne jamais publier une cohorte dont la couverture n'est pas
+complète.** Au 22 septembre, 2026/09/07 affichait 74,0 % d'appels OK et un résidu de
+**+6,7**, présentés ici comme la seule vraie sur-performance de l'année — sur une
+couverture de 83 %. Une semaine plus tard, couverture à 99,3 %, elle est à **68,7 %** et
+son résidu à **+2,4**, soit la moyenne de l'année. Les 94 statuts saisis en dernier
+n'étaient quasiment pas des OK. Le taux de RDV pris a lui aussi reculé, de 46,4 % à
+43,5 %. **Attendre 95 % de couverture avant de conclure quoi que ce soit.**
 
 ## Verdicts par cohorte
 
 **2026/08/24 se démonte entièrement.** Sur les appels OK, son bon chiffre vient du canal
-(+3,2, recrutement à 14 % de CAF contre ~50 % la norme), résidu nul. Sur les missions, il
+(+3,1, recrutement à 14 % de CAF contre ~50 % la norme), résidu nul. Sur les missions, il
 vient du pool (+3,6), résidu −1,9. Rien dans son résultat ne vient de son exécution — à
 ne pas citer comme un succès opérationnel.
 
@@ -116,14 +123,21 @@ ne pas citer comme un succès opérationnel.
 partait avec le meilleur pool de l'année (+3,5) : son exécution est à −6,1, le plus
 mauvais résidu missions de 2026. Le pool a masqué une contre-performance.
 
-**2026/03/23 n'a rien à expliquer.** Son écart brut de −1,9 est intégralement imputable
-au canal (70 % de CAF). Résidu à +0,1.
+**2026/03/23 n'a rien à expliquer** à 13 mois : son écart brut de −1,9 est intégralement
+imputable au canal (70 % de CAF), résidu à −0,1. Réserve : avec une fenêtre de projection
+de 6 mois, son écart passe à −5,9, ce qui la rapproche des cohortes d'avril. À regarder
+si le dossier d'avril se précise.
 
 **2026/04/06 et 2026/04/20** — le canal en explique 3,4 et 4,1 points. Le reste est
 documenté dans `references/interpretation.md` et reste sans cause établie.
 
 **2026/05/18** partage la signature Aircall d'avril en plus atténué, et son 61,7 % global
 repose sur 36,7 % de RDV pris.
+
+**2026/09/07 est dans la moyenne, pas au-dessus.** Résidu à +2,4 sur les appels OK et
+−0,5 sur les missions, une fois la saisie terminée. Elle garde les meilleurs indicateurs
+d'adoption du dispositif — 84,8 % de propositions, 43,5 % de RDV pris, 51,3 % de
+transformation — mais cela ne se traduit pas en sur-performance mesurable.
 
 ## Le dispositif RDV n'est pas dans la chaîne
 

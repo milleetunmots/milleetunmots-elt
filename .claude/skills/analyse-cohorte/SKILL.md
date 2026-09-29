@@ -110,7 +110,7 @@ Le même fichier récapitule ce qui a déjà été établi sur ce périmètre, �
 ## Résultats déjà établis
 
 `references/resultats-2026.md` porte la décomposition chiffrée des treize cohortes de
-2026 et les verdicts par cohorte — instantané au 2026-09-22, à rafraîchir début 2027.
+2026 et les verdicts par cohorte — instantané au 2026-09-29, à rafraîchir début 2027.
 Le consulter avant de relancer une analyse sur une cohorte de 2026 : elle y est
 probablement déjà.
 
@@ -166,9 +166,11 @@ probablement déjà.
   positif des cohortes récentes vient de l'adoption, pas de l'exécution.
 - **Écart ≠ niveau.** Une accompagnante peut progresser fortement (+10 pts) tout en
   restant la plus basse en absolu. Toujours afficher les deux colonnes.
-- **Une cohorte en cours a une couverture incomplète.** Une cohorte à 83 % de couverture
-  affiche un taux provisoire : la saisie n'est pas terminée et les derniers statuts
-  saisis sont rarement des OK.
+- **Ne jamais conclure sous 95 % de couverture.** Cas mesuré : 2026/09/07 affichait
+  74,0 % d'appels OK et un résidu de +6,7 à 83 % de couverture ; une semaine plus tard,
+  à 99,3 %, elle était à 68,7 % et +2,4. Soit 5,3 points d'écart sur le taux et 4,3 sur
+  le résidu — assez pour transformer « la meilleure cohorte de l'année » en « dans la
+  moyenne ». Les derniers statuts saisis ne sont quasiment jamais des OK.
 
 ## Restitution
 
