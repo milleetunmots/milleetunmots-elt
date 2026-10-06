@@ -231,7 +231,8 @@ def creer_table(conn):
 
 def fetch_todo(conn, limit=None, sessions=None, duree_mini=DUREE_MINI,
                densite_mini=DENSITE_MINI, only_notes=False, force=False,
-               alea=False, graine=None, un_par_session=True):
+               alea=False, graine=None, un_par_session=True, depuis=None,
+               regrille=None):
     """
     Les appels notables et pas encore notes.
 
@@ -249,6 +250,15 @@ def fetch_todo(conn, limit=None, sessions=None, duree_mini=DUREE_MINI,
     if sessions:
         liste = ", ".join(str(int(s)) for s in sessions)
         conditions.append(f"call_session in ({liste})")
+
+    # --depuis prend soit un nombre de mois, soit une date ISO. La borne est
+    # calculee par l'entrepot : un calcul cote Python sur l'horloge de la
+    # machine donnerait une fenetre differente selon qui lance la passe.
+    if depuis:
+        texte = str(depuis)
+        borne = (f"dateadd(month, -{int(texte)}, current_date())"
+                 if texte.isdigit() else f"to_date('{texte}')")
+        conditions.append(f"date_started >= {borne}")
 
     # Un echantillon aleatoire plutot que les plus recents : pour juger la
     # grille, il faut couvrir toutes les accompagnantes et toutes les periodes,
@@ -289,6 +299,17 @@ def fetch_todo(conn, limit=None, sessions=None, duree_mini=DUREE_MINI,
             apres_coup.append(
                 f"call_id not in (select id_appel from {TARGET_TABLE}"
                 f" where origine_note = 'llm')")
+    elif regrille:
+        # Renoter ce que le modele a note sous une AUTRE grille, en laissant les
+        # notes manuelles tranquilles : elles restent la reference humaine, et
+        # les remplacer par une note de modele dans aircall_analysis serait une
+        # perte silencieuse.
+        apres_coup.append(
+            f"call_id not in (select id_appel from {TARGET_TABLE}"
+            f" where origine_note = 'llm' and prompt_hash = '{regrille}')")
+        apres_coup.append(
+            f"call_id not in (select id_appel from {TARGET_TABLE}"
+            f" where origine_note = 'manuel')")
     elif not force:
         apres_coup.append(f"call_id not in (select id_appel from {TARGET_TABLE})")
 
@@ -864,8 +885,25 @@ class LimiteAtteinte(Exception):
     """Le quota de l'abonnement est epuise : rien a faire qu'attendre."""
 
 
-MOTIFS_LIMITE = ("hit your session limit", "hit your usage limit",
-                 "rate limit", "resets at", "resets ")
+# Les tournures par lesquelles le CLI annonce un quota epuise. Resserrees apres
+# un faux positif qui a interrompu une passe a 91 % : les motifs larges
+# ("rate limit", "resets ") matchaient des champs de l'enveloppe JSON, et un
+# echec transitoire se faisait passer pour une limite atteinte. Un quota epuise
+# est une raison d'arreter tout ; rien d'autre ne doit en prendre l'apparence.
+MOTIFS_LIMITE = ("usage limit reached", "session limit reached",
+                 "hit your usage limit", "hit your session limit",
+                 "usage limit \u00b7 resets", "limit \u00b7 resets")
+
+# Le texte complet des echecs, pour pouvoir diagnostiquer apres coup. Le
+# tronquer a 300 caracteres avait fait perdre exactement la partie utile.
+JOURNAL_ECHECS = os.path.join(BASE, "logs", "segmentation_echecs.log")
+
+
+def journaliser(contexte, brut):
+    os.makedirs(os.path.dirname(JOURNAL_ECHECS), exist_ok=True)
+    with open(JOURNAL_ECHECS, "a", encoding="utf-8") as f:
+        f.write(f"\n===== {datetime.now(timezone.utc).isoformat(timespec='seconds')} "
+                f"{contexte} =====\n{brut}\n")
 
 
 def repertoire_neutre():
@@ -900,8 +938,10 @@ def appeler_cli(cmd, message, timeout=600):
                          text=True, timeout=timeout, cwd=repertoire_neutre())
     brut = (res.stdout or "") + (res.stderr or "")
     if any(m in brut.lower() for m in MOTIFS_LIMITE):
+        journaliser("LIMITE", brut)
         raise LimiteAtteinte(brut.strip()[:300])
     if res.returncode != 0:
+        journaliser(f"RETOUR {res.returncode}", brut)
         raise RuntimeError(f"claude a renvoye {res.returncode} : {brut.strip()[:300]}")
 
     try:
@@ -910,7 +950,19 @@ def appeler_cli(cmd, message, timeout=600):
         raise RuntimeError(f"enveloppe illisible : {res.stdout[:200]}")
 
     if enveloppe.get("errors"):
+        journaliser("ERREURS", brut)
         raise RuntimeError(f"erreurs CLI : {enveloppe['errors']}")
+
+    # Zero jeton consomme et pas de texte : l'appel n'a pas abouti. C'est un
+    # echec de cet appel-la, pas une raison d'arreter la passe -- le relancer
+    # suffit, et l'anti-jointure s'en charge.
+    usage = enveloppe.get("usage") or {}
+    if not (enveloppe.get("result") or enveloppe.get("structured_output")):
+        journaliser(f"REPONSE VIDE (stop_reason="
+                    f"{enveloppe.get('stop_reason')}, jetons="
+                    f"{usage.get('output_tokens')})", brut)
+        raise RuntimeError(f"reponse vide, stop_reason="
+                           f"{enveloppe.get('stop_reason')}")
 
     # --json-schema, quand il est accepte, rend l'objet deja valide ;
     # sinon il faut l'extraire du texte.
@@ -938,8 +990,13 @@ def sonder_cli(systeme, gabarit, appel, modele, binaire, schema, extra,
     note, usage, cout_cli = appeler_cli(cmd, message)
     print(f"\nReponse en {time.time()-t0:.0f} s :")
     print("  " + json.dumps(note, ensure_ascii=False))
-    score, flag, ecart = recalculer(note)
-    print(f"\nRecalcul : {flag} {score}/12" + ("  (le modele disait autre chose)" if ecart else ""))
+    if note_vide(note):
+        print(f"\nPas d'accord d'enregistrement : rien n'est note, "
+              f"la ligne porterait flag={FLAG_SANS_ACCORD} et des criteres a NULL.")
+    else:
+        score, flag, ecart = recalculer(note)
+        print(f"\nRecalcul : {flag} {score}/12"
+              + ("  (le modele disait autre chose)" if ecart else ""))
     if usage:
         print(f"Jetons : {usage}")
     if cout_cli is not None:
@@ -1160,6 +1217,11 @@ def main():
     ap.add_argument("--effort", default="high",
                     choices=["low", "medium", "high", "xhigh", "max"],
                     help="profondeur de reflexion, premier levier de cout (defaut high)")
+    ap.add_argument("--depuis", metavar="MOIS|AAAA-MM-JJ",
+                    help="ne garder que les appels depuis N mois, ou depuis une date")
+    ap.add_argument("--regrille", action="store_true",
+                    help="renoter aussi les appels deja notes sous une autre "
+                         "version de la grille (les notes manuelles restent)")
     ap.add_argument("--tous-les-appels", action="store_true",
                     help="noter tous les appels reels, pas seulement le plus long "
                          "de chaque session (par defaut un seul, celui que "
@@ -1234,7 +1296,9 @@ def main():
                                densite_mini=args.min_densite,
                                only_notes=args.only_notes, force=args.force,
                                alea=args.random, graine=args.seed,
-                               un_par_session=not args.tous_les_appels)
+                               un_par_session=not args.tous_les_appels,
+                               depuis=args.depuis,
+                               regrille=empreinte if args.regrille else None)
     if todo.empty:
         print("Rien a noter : tous les appels notables ont deja une note.")
         conn.close()
