@@ -1,0 +1,99 @@
+version: 2
+
+models:
+  - name: aircall_transcriptions_dict
+    description: >
+      Passe 1 sur 2 de l'anonymisation des transcriptions Aircall : le
+      dictionnaire. Un segment de parole par ligne. Remplace les personnes
+      connues nommément en base — parent, fratrie, accompagnante — ainsi que
+      les téléphones et les emails, entièrement dans l'entrepôt.
+
+      Ne pas consommer directement : utiliser aircall_transcriptions_anonymised,
+      qui y ajoute la passe NER.
+    columns:
+      - name: text_dict
+        description: Texte du segment après la passe dictionnaire.
+      - name: is_candidat_ner
+        description: >
+          Subsiste-t-il un mot capitalisé hors vocabulaire courant, ou un mot de
+          voie ? Ces segments — 73 000, soit 3,7 % — sont ceux que la passe NER doit
+          traiter. La stop-list qui définit le « vocabulaire courant » est la var
+          anonymise_stopwords de dbt_project.yml.
+      - name: is_sans_dictionnaire
+        description: >
+          La famille du segment n'a aucun nom connu en base, donc aucun
+          remplacement déterministe n'était possible. Environ 1 600 segments
+          sur 2 millions.
+
+  - name: aircall_transcriptions_anonymised
+    description: >
+      Transcriptions Aircall anonymisées — modèle de sortie. Réunit la passe
+      dictionnaire et la passe NER (table fact.aircall_transcriptions_ner,
+      produite par admin/anonymize_aircall_ner.py) par jointure sur le hash du
+      texte.
+
+      Les identifiants directs asset_url, caller_id et phone_number sont
+      CONSERVÉS EN CLAIR par décision explicite : seul le texte est anonymisé.
+      La table reste donc réidentifiable via l'enregistrement audio, et n'a pas
+      vocation à sortir du périmètre d'accès de la source.
+    columns:
+      - name: call_id
+        description: Identifiant Aircall de l'appel.
+      - name: family_id
+        description: child_support_id de la famille, renommé selon la convention.
+      - name: text
+        description: >
+          Texte du segment anonymisé. Tags possibles : [PARENT], [ENFANT],
+          [ACCOMPAGNANTE] et [TELEPHONE] pour la passe dictionnaire,
+          [PRENOM_NOM] et [ADRESSE] pour la passe NER.
+      - name: is_anonymisation_complete
+        description: >
+          Le segment a-t-il vu les deux passes ? Un segment candidat dont le
+          texte n'est pas encore dans la table NER ressort avec le texte du
+          dictionnaire seul : correct mais incomplet. Filtrer dessus dès que
+          l'exhaustivité compte.
+      - name: participant_type
+        description: >
+          internal (accompagnante) ou external (famille). Indispensable au
+          diagnostic d13, qui distingue le répondeur de la conversation humaine.
+
+  - name: aircall_transcriptions_anonymised_by_call
+    description: >
+      Transcriptions Aircall anonymisées, un appel par ligne — la forme dans
+      laquelle un appel se lit, et celle de la source brute
+      (raw_transcription_payload : un JSON par appel, 14 228 caractères en
+      moyenne). Recolle les segments de aircall_transcriptions_anonymised ;
+      l'anonymisation elle-même reste faite au grain segment, là où le
+      dictionnaire sait qui parle.
+
+      20 067 appels, 5 580 caractères de transcription en moyenne, 137 235 au
+      maximum.
+
+      La source brute reste en clair dans MOTS_DL : c'est de la pseudonymisation
+      pour l'analyse, pas un effacement.
+    columns:
+      - name: call_id
+        description: Identifiant Aircall de l'appel.
+        tests:
+          - unique
+          - not_null
+      - name: transcript
+        description: >
+          La conversation anonymisée dans l'ordre, préfixée par locuteur selon
+          la convention des requêtes de diagnostic : « A: » pour
+          l'accompagnante, « P: » pour la famille.
+      - name: transcript_brut
+        description: >
+          Même contenu sans préfixes ni tours de parole, pour la recherche plein
+          texte et les classificateurs par mots-clés.
+      - name: transcript_externe
+        description: >
+          La parole de la famille seule. Base de la détection de répondeur du
+          diagnostic d13 : un message vocal ne contient aucune parole interne.
+      - name: is_anonymisation_complete
+        description: >
+          Faux dès qu'un seul segment de l'appel attend encore la passe NER : un
+          monobloc n'est complet que si tous ses morceaux le sont. Tant que la
+          passe GLiNER n'a pas tourné, seuls 28,5 % des appels sont complets :
+          un appel compte 99 segments en moyenne, un seul en attente suffit à
+          le marquer incomplet.

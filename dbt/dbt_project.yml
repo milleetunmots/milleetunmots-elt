@@ -19,6 +19,18 @@ vars:
   # tout taux de remplissage doit filtrer là-dessus.
   enrollment_form_start_date: to_date('2026/03/27', 'yyyy/mm/dd')
 
+  # Vocabulaire que l'anonymisation ne doit jamais prendre pour un nom propre.
+  # Source unique de verite : lue par la macro SQL anonymise_stopwords() ET par
+  # admin/anonymize_aircall_ner.py. Les deux en gardaient chacun sa copie, elles
+  # ont derive, et GLiNER s'est mis a taguer "Allo" (3 686 segments) comme un
+  # prenom -- ce qui aurait casse le classificateur de repondeurs du diagnostic d13.
+  # Etablie sur les 260 tokens capitalises les plus frequents du corpus : francais
+  # courant, anglais (le moteur de transcription bascule de langue) et "1001 mots"
+  # mal transcrit (milleamo, millermo, minermo...).
+  # NE PAS y ajouter de prenom, meme s'il collisionne avec un mot courant : un faux
+  # positif coute de la lisibilite, un faux negatif une reidentification.
+  anonymise_stopwords: "oui|donc|est|ouais|vous|alors|mais|voila|voilà|bon|elle|non|super|apres|après|merci|bonjour|moi|parce|quand|allo|allô|comment|par|une|comme|bien|pour|des|tres|très|enfin|tout|peut|les|ecoutez|écoutez|bonne|okay|veuillez|avant|ils|meme|même|mille|allez|dans|pas|genial|génial|votre|maintenant|avec|parfait|sinon|deja|déjà|enregistrez|trop|nous|attendez|puis|pardon|bravo|normalement|exactement|parfois|franchement|hop|que|lui|pourquoi|dites|juste|aujourd|vraiment|souvent|sur|excusez|effectivement|mots|justement|maman|papa|attends|tous|cette|notre|ensuite|saint|plus|demain|toujours|mon|parler|tiens|surtout|elles|qui|pendant|regarde|plutot|plutôt|tant|desole|désolé|pareil|depuis|sauf|dis|zero|zéro|quel|combien|dieu|bonsoir|son|madame|monsieur|viens|chez|vers|messagerie|excellent|amour|soit|mhmm|hier|voyez|aussi|encore|genre|chaque|quelle|quoi|finalement|rappelez|pourtant|continuez|appel|tour|beaucoup|coucou|chanter|cote|côté|generalement|généralement|regardez|entre|celui|essayez|arrete|arrête|deux|dix|quelque|mes|jusqu|insta|fait|ici|mince|toutes|puisque|attention|toi|evidemment|évidemment|jouer|tac|petit|petite|yes|yeah|wait|and|that|you|the|but|what|hello|thank|french|english|alright|bye|she|instagram|france|google|facebook|youtube|whatsapp|disney|amazon|milleamo|millermo|miller|millemo|minermo|milamo|minamo|millia|millian|minimmo|miner|armo|minimo|right|exact|totalement|chouette|sweet|aló|alo|nickel|ouaip|euh|ben|bref|mhm|carrement|carrément|clairement|forcement|forcément|apparemment|visiblement|honnetement|honnêtement|volontiers|entendu|impeccable|parfaitement"
+
 tests:
   +store_failures: true
 
