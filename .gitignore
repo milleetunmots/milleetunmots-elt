@@ -28,3 +28,14 @@ admin/__pycache__/
 # traitement, donc les noms en clair. Meme raison que ci-dessus : le
 # dossier entier reste hors du depot.
 admin/camille/
+
+# Aucun CSV ne part au depot, quel qu'il soit.
+#
+# Les donnees de 1001 mots arrivent et repartent par CSV : exports de l'appli,
+# seeds dbt, rapports de controle. Ils portent des emails d'accompagnantes, des
+# telephones de familles, des codes postaux, des verbatims. Compter sur une
+# regle par fichier a echoue -- seeds/ couvrait les seeds, pas le reste.
+#
+# Un CSV qui doit vraiment etre versionne (une table de correspondance ecrite a
+# la main, sans donnee personnelle) s'ajoute explicitement : git add -f <fichier>.
+*.csv
