@@ -5,6 +5,30 @@
 -- 2026/04/20 S0 faisait -15,7. Au 19 avril, 2026/03/09 S1 +3,0 contre
 -- 2026/04/06 S0 -7,4. Hypothese calendaire morte.
 -- PARAM : la fenetre de dates dans le where final.
+--
+-- /!\ FAIBLESSE DE CE TEST, et comment la corriger (2026-10-02).
+-- Les cellules jumelles qu'il compare ne sont pas du meme RANG de session : il
+-- oppose 2026/04/20 S0, un premier contact depuis un numero inconnu, a 2026/03/23 S1,
+-- un appel chaud ou la famille connait son accompagnante et a son numero. Une periode
+-- creuse pourrait peser sur l'un sans toucher l'autre. "Memes semaines, resultats
+-- opposes" ne suffit donc pas.
+-- Deux blocs ont ete ajoutes en bas du fichier pour y repondre. Verdict inchange,
+-- l'hypothese calendaire reste MORTE, mais maintenant correctement :
+--   * bloc (2) : ecart de chaque cellule a la norme de SA session, sur la vraie duree
+--     de conversation. Dans chaque quinzaine, la seule cellule en dessous est celle
+--     d'une cohorte d'avril -- 2026/04/20 S0 a -9,0 quand 2026/03/23 S1 est a +0,8 et
+--     2026/02/23 S2 a +0,8 les memes jours. Et dans la fenetre suivante, 2026/04/06 S1
+--     est a -7,6 quand 2026/05/04 S0, un PREMIER CONTACT en plein pont du 1er et du
+--     8 mai, est a -0,3. Le deficit suit la cohorte, pas le calendrier.
+--   * bloc (3) : indice de periode pur, hors cohortes d'avril. Les deux semaines de la
+--     fenetre de 2026/04/20 pesent -0,0 point en moyenne ponderee (+1,1 et -1,8), dans
+--     une serie hebdomadaire qui va de -6,3 a +3,9 sur le printemps. Aucun effet.
+--
+-- A noter pour qui refait un test apparie accompagnante x jour : comparer des taux
+-- BRUTS entre rangs de session est une erreur. Une session 0 convertit normalement
+-- mieux (norme 32,0 % de conversations >= 2 min) qu'une S1 (28,1) ou une S2 (26,1).
+-- Sans ramener chaque cote a sa norme, l'appariement donne -0,1 point et conclut a
+-- tort a l'absence d'effet cohorte ; avec la correction il donne -4,9.
 
 -- Projeté vs réalisé par cohorte x session
 -- Projection = performance des accompagnantes de la cellule sur les 13 mois
@@ -92,3 +116,64 @@ select left(p.cohort_name,10) as coh, p.call_session as s,
 from proj p join reel r on r.cohort_name=p.cohort_name and r.call_session=p.call_session
 where p.n >= 50 and r.fin between '2026-03-15' and '2026-06-15'
 order by r.fin
+
+;
+
+-- (2) Ecart de chaque cellule a la norme de SA session, sur la duree de conversation
+-- reelle (answered_at -> ended_at, cf. d14). Trier par `deb` et lire par groupes de
+-- cellules qui partagent la meme fenetre.
+with w as (
+  select st.family_id, left(st.cohort_name,10) coh,
+         g.date_call0_start::date s0, g.date_call1_start::date s1,
+         g.date_call2_start::date s2, g.date_call3_start::date s3,
+         g.date_call0_end::date e0, g.date_call1_end::date e1,
+         g.date_call2_end::date e2, g.date_call3_end::date e3
+  from fact.super_table st
+  inner join dim.child c on c.child_id = st.child_id
+  inner join dim.groups g on g.group_id = c.group_id
+  where st.cohort_name like '2026/%'),
+win as (
+  select distinct family_id, coh, 0 cs, s0 deb, e0 fin from w
+  union all select distinct family_id, coh, 1, s1, e1 from w
+  union all select distinct family_id, coh, 2, s2, e2 from w
+  union all select distinct family_id, coh, 3, s3, e3 from w),
+ac as (
+  select a.child_support_id fid, a.call_session cs,
+         iff(datediff(second, a.answered_at, a.ended_at) >= 120, 1, 0) conv
+  from MOTS_DL.MOTS_APP.aircall_calls a
+  where a.direction = 'outbound'),
+cell as (
+  select win.coh, win.cs, max(win.deb) deb, count(*) tentatives, avg(a.conv) r
+  from win join ac a on a.fid = win.family_id and a.cs = win.cs
+  where win.fin <= current_date
+  group by 1,2
+  having tentatives >= 100)
+select coh, cs, deb, tentatives,
+       round(100.0*r,1) conv_120,
+       round(100.0*(r - avg(r) over (partition by cs)),1) ecart_norme_session
+from cell
+order by deb, cs
+
+;
+
+-- (3) Indice de periode pur, semaine par semaine, cohortes d'avril EXCLUES
+-- (sinon elles fabriquent l'effet qu'on cherche a mesurer).
+with fam as (
+  select distinct family_id, left(cohort_name,10) coh from fact.super_table
+  where cohort_name like '2026/%'),
+ac as (
+  select a.started_at::date jour, a.child_support_id fid, a.call_session cs,
+         iff(datediff(second, a.answered_at, a.ended_at) >= 120, 1, 0) conv
+  from MOTS_DL.MOTS_APP.aircall_calls a
+  where a.direction = 'outbound' and a.started_at >= '2026-01-01'),
+hors_avril as (
+  select a.*, f.coh from ac a join fam f on f.family_id = a.fid
+  where f.coh not in ('2026/04/06','2026/04/20')),
+norme as (select cs, avg(conv) r from hors_avril group by 1)
+select date_trunc('week', h.jour)::date semaine,
+       count(*) appels,
+       round(100.0*avg(h.conv),1) conv_120,
+       round(100.0*avg(h.conv - n.r),1) ecart_norme_session
+from hors_avril h join norme n on n.cs = h.cs
+where h.jour between '2026-03-09' and '2026-06-14'
+group by 1 order by 1

@@ -54,7 +54,8 @@ résultats faux.
 | Session | 0 à 3 | Fenêtre d'appel de 13 jours, bornée par `dim.groups.date_callN_start/end` |
 | Accompagnante | `supporter_name` | Email de l'admin user |
 | RDV pris | `has_booking_callN` | Tous statuts confondus, **annulations incluses** |
-| RDV proposé | `has_booking_proposal_callN` | SMS contenant un lien Calendly sur la fenêtre de la session |
+| Décroché à la 1ʳᵉ tentative | `nb_of_tries_callN = '1ère tentative'` | Saisi par l'accompagnante. **Renseigné seulement si l'appel a abouti** (4,2 % sur les KO) : rapporté à toutes les familles c'est le taux de décroché, rapporté aux seules jointes c'est le nombre d'essais nécessaires. Corroboré par Aircall `duration >= 120` — voir `sql/10` |
+| RDV proposé | `has_booking_proposal_callN` | SMS portant un lien Calendly **du dispositif** (`utm_source=1001mots`). Session imputée par `utm_campaign=callN`, repli sur la fenêtre de dates |
 
 ## Déroulé de l'analyse
 
@@ -86,8 +87,12 @@ elles portent.
 Le RDV a été déployé **en cours d'année 2026** (premiers RDV en février, 0 % de RDV au
 call 0 en janvier contre 46 % en septembre). Toute comparaison entre cohortes doit en
 tenir compte. `06` donne les taux de proposition, de prise de RDV et de transformation ;
-`07` estime l'effet réel du dispositif hors biais de sélection. Lire le piège ci-dessous
-avant d'interpréter quoi que ce soit sur les RDV.
+`07` estime l'effet réel du dispositif hors biais de sélection. `sql/10` mesure le
+**décroché téléphonique à la première tentative** — à ne pas confondre avec l'appel non
+abouti, qui porte sur la session entière. `sql/11` donne la **ligne de base d'avant le
+dispositif** : c'est elle le comparateur d'un groupe proposé, jamais les non proposés de
+la même période. Lire le piège ci-dessous avant d'interpréter
+quoi que ce soit sur les RDV.
 
 **6. Décomposer entièrement — `sql/08_effet_pool.sql` puis `sql/09_decomposition_complete.sql`**
 La chaîne complète : `réel = barre du vivier + effet pool + effet canal + résidu`,
@@ -96,11 +101,15 @@ d'accompagnantes mobilisé.
 
 **7. Diagnostiquer — `references/interpretation.md` et `sql/diagnostic/`**
 Dix hypothèses à tester dans un ordre précis, avec les requêtes courtes associées et
-les repères chiffrés pour trancher. Le dossier `sql/diagnostic/` contient les douze
+les repères chiffrés pour trancher. Le dossier `sql/diagnostic/` contient les dix-sept
 requêtes correspondantes, chacune portant en tête son résultat — la plupart sont des
 hypothèses **écartées**, et c'est l'essentiel de leur valeur : ne pas les refaire. Son
-README sert d'index. Contient aussi la piste ouverte sur les transcriptions Aircall,
-à reprendre dès que la table sera alimentée.
+README sert d'index et sa section « Ce qui reste » donne les contraintes qu'une
+hypothèse nouvelle doit satisfaire.
+
+Les transcriptions Aircall sont exploitables depuis le 2026-10-02 et ont tranché la
+question laissée ouverte sur avril (`d13`) : les appels courts sont des **répondeurs**,
+pas de mauvais interlocuteurs.
 
 Commencer par `sql/diagnostic/d08_dispersion_du_residu.sql` : la dispersion normale du
 résidu est de 6,3 points, donc une cohorte basse n'appelle pas forcément d'explication. `sql/05_projection_avec_canal.sql` quantifie la
@@ -113,6 +122,33 @@ Le même fichier récapitule ce qui a déjà été établi sur ce périmètre, �
 2026 et les verdicts par cohorte — instantané au 2026-09-29, à rafraîchir début 2027.
 Le consulter avant de relancer une analyse sur une cohorte de 2026 : elle y est
 probablement déjà.
+
+## La règle des deux appels KO consécutifs — l'attrition est administrative
+
+**L'application désengage automatiquement une famille après deux appels KO consécutifs.**
+C'est une règle métier, pas un comportement des familles, et c'est elle qui produit
+l'essentiel de l'attrition. Vérifiée sur données (`sql/diagnostic/d18`, blocs 6 et 7) :
+
+| S0 | S1 | Familles | Couverture S2 |
+|---|---|---|---|
+| KO | **KO** | 234 | **26,5 %** |
+| KO | OK | 212 | 94,8 % |
+| OK | KO | 227 | **98,2 %** |
+| OK | OK | 446 | 98,0 % |
+
+**Un KO isolé ne coûte rien en couverture ; seule la séquence compte.** Conséquences :
+
+- **Ne jamais conditionner sur le statut d'une seule session** pour lire l'attrition :
+  agréger « S1 ratée » mélange (OK, KO) qui ne perd personne et (KO, KO) qui perd tout,
+  et fabrique un faux résultat. Toujours croiser S0 × S1.
+- **Le bon indicateur de ce qu'une cohorte a coûté est la part de double KO**, pas le taux
+  d'OK d'une session. Sur 2026 elle prédit la couverture presque parfaitement : 11,0 % →
+  87,4 % de couverture S2 pour `2026/01/26`, 26,5 % → 66,4 % pour `2026/04/06`.
+- **Le coût d'une mauvaise session dépend entièrement de la précédente.** Une cohorte qui
+  a raté sa session 0 joue toute sa taille sur la session 1. `2026/04/20` a la session 0
+  la plus basse de l'année (49,0 %) et sauve sa taille parce que sa session 1 revient à
+  60,2 % ; `2026/04/06`, moins spectaculaire, rate les deux et perd **la moitié de sa
+  cohorte**. Toujours afficher la couverture à côté des taux.
 
 ## Seuils de lecture
 
@@ -146,15 +182,89 @@ probablement déjà.
   explicative sans écarter les NULL revient à expliquer le résultat par lui-même. Le
   bilinguisme en soi n'a aucun effet : 74,5 % pour les bilingues, 72,5 % pour les autres.
 - **`answered` d'Aircall ne veut pas dire « quelqu'un a décroché ».** Il vaut vrai dans
-  94,6 % des cas avec une médiane de 63 s. Pour la joignabilité, passer par `duration`.
+  94,6 % des cas avec une médiane de 63 s. Pour la joignabilité, passer par la durée.
+- **Préférer `answered_at` à `duration`.** La source `MOTS_DL.MOTS_APP.AIRCALL_CALLS`
+  porte `ANSWERED_AT`, `ENDED_AT` et `MISSED_CALL_REASON`, **absents du modèle de
+  staging**. `datediff(second, answered_at, ended_at)` donne la conversation hors
+  sonnerie et lève la bimodalité de `duration`. La sonnerie elle-même est de 14,5 à
+  16,2 s sur toutes les cohortes 2026 — un écart sur cette valeur signalerait un
+  problème de ligne, pas de famille. `caller_id` est l'identifiant de l'**agent**, pas
+  un numéro de ligne sortante : la source n'en contient aucun.
+- **Un appel court n'est pas une conversation courte, c'est un répondeur.** Établi sur
+  les transcriptions (`sql/diagnostic/d13`) : dans la bande 60-120 s, l'essentiel des
+  appels sont des messageries vocales où l'accompagnante laisse un message. Ne jamais
+  interpréter la bande 1-2 min comme « un échange qui tourne court ».
+- **Les transcriptions sont un échantillon biaisé par la durée.** Couverture de 0 % sous
+  20 s à 24-31 % au-delà de 5 min. Tout taux brut calculé dessus est optimiste de 5 à
+  6 points ; repondérer par la distribution réelle des durées (`d13`, bloc 3). Les
+  comparaisons **intra-classe de durée** sont valides, les niveaux bruts non.
+- **Les messages de répondeur sont longs.** « Je ne suis pas là, laissez-moi un message.
+  Une fois votre message enregistré… » dépasse 80 caractères : un classificateur fondé
+  sur la longueur du texte de l'interlocuteur les compte comme des humains. Utiliser la
+  liste de marqueurs calibrée en tête de `d13`, ne pas la raccourcir.
 - **Ne pas sur-expliquer la cohorte la plus basse.** La dispersion normale du résidu est
-  de 6,3 points ; sur 41 cellules, le minimum attendu par hasard est d'environ −13. Deux
-  hypothèses ont déjà été construites puis invalidées sur le dossier d'avril 2026.
+  de 6,3 points ; sur 41 cellules, le minimum attendu par hasard est d'environ −13. Sur
+  le seul dossier d'avril 2026, **dix hypothèses** ont été construites puis invalidées —
+  dont la conclusion de septembre elle-même (le fichier CAF périmé). Avant d'en ouvrir
+  une onzième, lire la section « Ce qui reste » du README de `sql/diagnostic/` : elle
+  liste les six contraintes qu'une explication doit satisfaire ensemble, et la plupart
+  des idées qui viennent spontanément y échouent en une ligne.
+- **Ne pas traiter les deux cohortes d'avril 2026 comme un seul dossier.** Leurs
+  trajectoires sont opposées : `2026/04/20` fait un trou isolé en session 0 puis revient
+  dans la moyenne (49,0 → 60,2), `2026/04/06` s'enfonce en session 1 (57,3 → 46,3). Et
+  leur source coupable n'est pas la même — CAF 93 pour l'une, CAF Aube pour l'autre
+  (`sql/diagnostic/d07`).
+- **La règle 1 vaut aussi entre sessions, et c'est là qu'on l'oublie.** Un `pct_ok` qui
+  remonte de session en session peut n'être qu'un dénominateur qui se vide : `2026/04/06`
+  passe de 46,3 à 62,0 % entre S1 et S3 pendant que sa couverture tombe de 89,9 à
+  50,8 %. Rapportée aux familles inscrites, elle baisse sans interruption. Afficher
+  **OK / inscrite** à côté de **OK / traitée** dès qu'on compare des sessions.
+- **Pondérer les écarts par source, pas seulement les mesurer.** Un écart de 13 points
+  sur une source qui pèse 69 % de la cohorte n'est pas comparable au même écart sur une
+  source à 8 %. Et quand une source domine à ce point, dire qu'elle sous-performe est
+  presque une reformulation du déficit de la cohorte : l'information est dans le
+  **contraste avec les autres sources du même lot**.
+- **Comparer des sessions de même rang quand on teste le calendrier.** Un appel de
+  session 1 est un appel chaud, un appel de session 0 un premier contact depuis un numéro
+  inconnu : une période creuse peut peser sur l'un sans toucher l'autre. Le test
+  calendaire de 2026 avait cette faiblesse et a dû être refait (il tient toujours).
 - **La fenêtre de 13 mois retarde sur les tendances structurelles.** Le taux de PM en
   session 2 est passé de 40 % (2025) à 57 % (2026) : la projection produit donc un
   écart positif systématique de +9 à +19 pts sur ces cellules, qui mesure la
   progression et non une surperformance ponctuelle. Sur la session 0, où il n'y a pas
   de tendance, les écarts sont centrés et la lecture est directe.
+- **`nb_of_tries_callN` n'existe que si l'appel a abouti.** C'est une rubrique du compte
+  rendu d'appel : renseignée à 99,5 % sur les statuts OK et 96,2 % sur « Incomplet », mais
+  à **4,2 % sur les KO** et 0 % sur « Numéro erroné ». Calculer « % 1ère tentative » sur les
+  seules lignes renseignées répond à « quand on joint la famille, combien d'essais ? »
+  (51,3 %) et non à « combien de familles décrochent au premier appel ? » (36,1 %). Les deux
+  sont utiles, l'écart est de 15 points, afficher lequel on montre. Le champ échappe au piège
+  PaperTrail de `stg_1001mots_app__child_supports` : 11 désaccords sur 34 202 familles.
+- **`has_booking_proposal` ne se lit pas avant février 2026.** La règle a été resserrée
+  le 2026-09-29 : un simple `body ilike '%calendly%'` ramassait trois choses distinctes.
+  D'abord les **Calendly personnels de quelques accompagnantes** (de la forme
+  `calendly.com/<prénom>1001mots` ou `calendly.com/<nom>`), utilisés de leur propre
+  initiative dès 2024 — d'où
+  des taux de proposition de 45 à 49 % sur 2024/06 et 2024/09 avec **0 % de RDV pris**,
+  ces RDV ne remontant jamais dans `scheduled_calls`. Ensuite les SMS de **confirmation et
+  de rappel** (« Vous avez RDV le… », « Rappel : vous avez RDV demain avec… »), qui portent
+  aussi un lien Calendly mais sont la conséquence d'un RDV pris, pas une proposition. Le
+  marqueur `utm_source=1001mots` isole les seules vraies invitations du dispositif et
+  apparaît en février 2026, exactement au lancement. Effet du resserrage : 4 776 → 3 456
+  familles jamais proposées, et les cohortes d'avant 2026 repassent à 0 %.
+- **La proposition est proactive, pas un rattrapage.** Le SMS part en moyenne **3 jours
+  avant l'ouverture de la fenêtre d'appel** et **99 % des propositions précèdent le moindre
+  appel** (0,03 tentative en amont en moyenne). L'hypothèse « le lien est envoyé après un
+  premier échec de contact » a été construite puis **invalidée** sur les horodatages Aircall
+  — ne pas la reformuler. Conséquence : « proposé » et « non proposé » ne se distinguent pas
+  par un historique d'appel, mais par l'accompagnante et la cohorte.
+- **« Proposé sans RDV » est un résidu négativement sélectionné, et il ne l'est pas sur la
+  joignabilité.** Au call 0 en régime établi, ce groupe fait 25,1 % de décroché brut contre
+  35,2 % chez les non proposés — mais **43,6 % en conditionnel contre 42,9 % sur la ligne de
+  base d'avant dispositif**, soit exactement la normale. Ils ne sont pas plus durs à joindre
+  par appel : ils sont simplement moins nombreux à être joints (57,6 % contre 70,9 %), parce
+  qu'ils ont déjà ignoré une sollicitation. Le bon comparateur d'un groupe proposé n'est
+  jamais le groupe non proposé de la même période.
 - **Le différentiel avec RDV / sans RDV n'est pas l'effet du dispositif.** L'écart brut
   de 25-30 points est très majoritairement de la sélection : les familles qui prennent
   RDV sont déjà celles qui répondent. L'effet réel est d'environ **+7 points**

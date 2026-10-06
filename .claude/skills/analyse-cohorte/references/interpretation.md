@@ -4,9 +4,14 @@ Quand `02_projete_vs_realise.sql` montre une cellule nettement en dessous de sa
 projection, **commencer par `sql/diagnostic/d08_dispersion_du_residu.sql`** : la
 dispersion normale est de 6,3 points, et la cohorte la plus basse d'une année n'a pas
 forcément besoin d'une explication. Puis tester les hypothèses **dans cet ordre**.
-Les hypothèses 1 à 8 ont chacune leur requête dans `sql/diagnostic/` — voir le README du dossier pour
-l'index et les verdicts. Chacune est peu coûteuse et
-plusieurs peuvent être écartées en une requête.
+Chaque hypothèse a sa requête dans `sql/diagnostic/` — voir le README du dossier pour
+l'index et les verdicts, dont les cinq ajouts du 2026-10-02 (`d13` à `d17`). Chacune est
+peu coûteuse et plusieurs peuvent être écartées en une requête.
+
+**Avant d'ouvrir une hypothèse nouvelle sur les cohortes d'avril 2026**, lire la section
+« Ce qui reste » du README de `sql/diagnostic/` : elle liste les six contraintes que
+toute explication doit satisfaire simultanément. Plusieurs hypothèses séduisantes y
+échouent en une ligne.
 
 ## 1. Le calendrier (vacances, ponts, période creuse)
 
@@ -25,6 +30,21 @@ order by r.fin
 
 Exemple réel : au 3 mai 2026, `2026/03/23` S1 faisait +1,9 pendant que `2026/04/20` S0
 faisait −15,7. Mêmes semaines, résultat opposé — hypothèse morte.
+
+**Attention, cette comparaison-là était faible** (corrigé le 2026-10-02). Elle oppose une
+session 1 à une session 0. Or un appel de session 1 est un appel **chaud** — la famille
+connaît son accompagnante et a son numéro — quand un appel de session 0 est un premier
+contact depuis un numéro inconnu. Des vacances ou un pont peuvent peser sur le second
+sans toucher le premier : « mêmes semaines, résultats opposés » ne suffit donc pas, il
+faut **comparer des sessions 0 entre elles**.
+
+Refait correctement : sur la fenêtre 04/05 → 17/05, en plein pont du 1er et du 8 mai,
+`2026/05/04` **S0** fait 68,5 %, le meilleur premier contact du printemps, pendant que
+`2026/04/06` S1 fait 46,3 %. Et dans la fenêtre 20/04 → 03/05, `2026/04/20` S0 est à
+49,0 % quand `2026/03/23` S1 est à 61,1 % et `2026/02/23` S2 à 67,6 %. **Le calendrier
+reste écarté, maintenant sur la bonne comparaison.** Le tableau complet des fenêtres
+réelles est dans `sql/diagnostic/d15_trajectoire_et_groupes_rdv.sql`, bloc 1 — s'en
+servir plutôt que de reconstruire les dates à la main.
 
 ## 2. Le mix de recrutement
 
@@ -115,10 +135,26 @@ lot caractérisé.
 
 ### Le bon indicateur de joignabilité : Aircall, pas le statut d'appel
 
+**Mieux que `duration` : `answered_at`** (ajouté le 2026-10-02). La source
+`MOTS_DL.MOTS_APP.AIRCALL_CALLS` porte `ANSWERED_AT`, `ENDED_AT` et
+`MISSED_CALL_REASON`, qui **ne sont pas exposés par le modèle de staging**. La durée de
+conversation hors sonnerie est donc calculable :
+`datediff(second, answered_at, ended_at)`. Cela lève la limite documentée de `duration`
+(qui inclut la sonnerie, d'où la distribution bimodale) et c'est la mesure à préférer
+dans toute analyse nouvelle. Avec elle, sur le call 0 : `2026/04/20` a 23,2 % de
+conversations de 2 min et plus contre 29,0 à 38,3 % ailleurs, et 17,8 % au-delà de 5 min
+contre 24,1 à 31,8 %. Voir `sql/diagnostic/d14_numeros_vivants_sms.sql`.
+
+La sonnerie, elle, est **identique partout** (14,5 à 16,2 s), ce qui écarte toute
+anomalie de réseau ou de ligne appelante. À noter : la source ne porte **aucun numéro
+appelant** — `caller_id` est l'identifiant de l'agent Aircall. L'hypothèse d'une ligne
+sortante marquée comme spam n'est donc pas testable directement, seulement par la
+sonnerie.
+
 `stg_1001mots_app__aircall_calls` porte `duration` et `answered`. **`answered` est
 inutilisable** : il vaut vrai dans 94,6 % des cas avec une médiane de 63 s — il signale
-que l'appel a abouti sur le réseau, pas qu'un humain a répondu. Utiliser la **durée
-maximale par famille × session** :
+que l'appel a abouti sur le réseau, pas qu'un humain a répondu. Si l'on reste sur
+`duration`, utiliser la **durée maximale par famille × session** :
 
 | Classe | Seuil | Lecture |
 |---|---|---|
@@ -189,7 +225,7 @@ attribut de famille.
 ## 9. Le dispositif de RDV
 
 Le RDV a été **déployé au cours de 2026** — premiers RDV en février, 0 % au call 0 en
-janvier, 46,4 % en septembre. C'est un changement de dispositif en cours d'année : aucune
+janvier, 43,5 % en septembre. C'est un changement de dispositif en cours d'année : aucune
 comparaison entre cohortes n'est valide sans en tenir compte.
 
 Trajectoire au call 0 (`sql/06_rdv_booking.sql`) :
@@ -200,7 +236,7 @@ Trajectoire au call 0 (`sql/06_rdv_booking.sql`) :
 | 2026/03/09 | 24 | 5 | 22 % |
 | 2026/04/20 | 54 | 21 | 40 % |
 | 2026/06/01 | 83 | 37 | 45 % |
-| 2026/09/07 | **85** | **46** | **55 %** |
+| 2026/09/07 | **85** | **44** | **51 %** |
 
 Les deux leviers ont progressé : la proposition (pratique des accompagnantes) et la
 transformation proposition → RDV.
@@ -234,9 +270,15 @@ par cohorte) : c'est la cohérence entre cohortes qui porte le résultat. Biais 
 non vérifié : la répartition des familles entre adoptantes et non-adoptantes au sein
 d'une cohorte pourrait suivre le département ou la langue.
 
-À noter : **le RDV a amorti le choc d'avril** (−12,8 contre −23,0 sur 2026/04/20). Si
-l'hypothèse du fichier périmé tient, c'est cohérent — un créneau posé donne un second
-point de contact quand le numéro ne répond pas au hasard.
+À noter : **le RDV a amorti le choc d'avril** (−12,8 contre −23,0 sur 2026/04/20) — c'est
+le résultat le plus solide sur ce dossier et il tient toujours. Un créneau posé donne un
+rendez-vous explicite là où l'appel tombe sur le répondeur.
+
+Mais **ne pas en faire l'explication de la cohorte** (vérifié le 2026-10-02) : la masse
+de l'écart de `2026/04/20` est dans le groupe **non proposé**, qui porte −10,7 des
+−19,6 points mesurés contre `2026/05/04`, contre −4,5 pour le groupe ayant pris un RDV et
+−4,4 pour les proposés sans RDV. Le dispositif ne peut porter qu'un quart de l'affaire.
+Détail et vérifications dans `sql/diagnostic/d15_trajectoire_et_groupes_rdv.sql`.
 
 ### Indicateurs à suivre
 
@@ -260,19 +302,38 @@ sont du même côté, le phénomène est collectif et la cause est ailleurs.
 Sur `2026/04/20` S0 : 19 accompagnantes sur 22 en dessous de leur propre projection,
 top 3 à 39 % seulement. Il n'y avait personne à désigner.
 
-# Piste ouverte : les transcriptions Aircall
+# Piste refermée : les transcriptions Aircall ont tranché
 
-Au 2026-09-22, `stg_1001mots_app__aircall_call_transcriptions` n'est pas encore
-exploitable. Dès qu'elle l'est, c'est le test décisif du dossier avril.
+**Fait au 2026-10-02.** La table `stg_1001mots_app__aircall_call_transcriptions` est
+alimentée depuis avril 2026. Requêtes : `sql/diagnostic/d13_transcriptions_interlocuteur.sql`.
 
-**La question exacte** : sur les conversations de **1 à 2 minutes** des cohortes
-`2026/04/06`, `2026/04/20` et `2026/05/18`, l'interlocuteur est-il le parent attendu ?
+**La réponse** : ni numéros réattribués, ni mauvais interlocuteur. Les appels courts
+d'avril sont des **répondeurs** — ce que la durée seule ne permettait pas de voir, et ce
+qui explique la signature trouvée par `d10`. Trois résultats :
 
-**Ce qu'elle départage** : deux hypothèses produisent la même signature dans les données
-actuelles — des **numéros réattribués** (un tiers décroche, l'échange tourne court) ou
-des **familles moins engagées** (le parent décroche et ne donne pas suite). Les durées
-de 1 à 2 minutes plaident plutôt pour la seconde, un mauvais interlocuteur raccrochant
-en 20-40 s, mais ce n'est pas tranché.
+1. **À durée d'appel égale, avril n'est jamais en dessous** sur le taux d'appels où un
+   humain répond : 13,1 % contre 15,6 % sur 20-60 s, 32,8 vs 36,5 sur 60-120 s, 94,4 vs
+   78,7 sur 2-5 min, 98,8 vs 90,7 au-delà. L'écart agrégé (36,9 % contre 43,1 % de
+   tentatives atteignant un humain) est **entièrement de la composition**.
+2. **Quand le parent décroche, c'est le bon parent.** Zéro tiers sur les 36 échanges
+   humains non-OK lus à la main.
+3. Ce que ces échanges montrent à la place : le parent décroche, dit qu'il est au travail
+   ou avec le bébé, **convient d'un rappel — et l'entretien n'a pas lieu** dans les
+   13 jours.
+
+**L'entonnoir fuit à chaque étage, modestement, et ça se cumule** :
+
+| Groupe | familles jointes | dont sans entretien | OK après report | OK si entretien |
+|---|---|---|---|---|
+| Avril | 62,9 % | 32,7 % | 41,7 % | 90,5 % |
+| Autres | 68,2 % | 23,9 % | 47,0 % | 96,5 % |
+
+**Deux pièges à connaître avant de relancer quoi que ce soit sur les transcriptions**,
+tous deux détaillés dans l'en-tête de `d13` : la couverture **croît avec la durée**
+(0 % sous 20 s, 24-31 % au-delà de 5 min), donc tout taux brut calculé sur
+l'échantillon est optimiste et il faut repondérer ; et les messages de répondeur
+dépassent souvent 80 caractères, donc un classificateur fondé sur la longueur du texte
+externe les compte comme des humains — utiliser la liste de marqueurs calibrée de `d13`.
 
 ---
 
@@ -349,12 +410,30 @@ première accompagnante, 34 à 50 % sur les cinq premières. Toujours pondérer.
 **Le cas des cohortes d'avril 2026** (−7,2 et −6,9 pts) : mix de recrutement à 96,8 % CAF
 contre 49,2 % ailleurs, ce qui absorbe un quart à la moitié de l'écart. Calendrier,
 charge, identité de la source CAF, composition d'âge et mix d'accompagnantes écartés.
-Résidu non expliqué de −11,7 pts (04/20 S0) et −9,5 pts (04/06 S1), dont la signature —
-plus de KO, deux fois plus de numéros erronés, déficit concentré sur les enfants de
-12 mois et plus, et **les familles ayant pris RDV qui ne répondent pas non plus**
-(69,4 % d'OK contre 80-92 % partout ailleurs) — pointe vers la fraîcheur des coordonnées
-du fichier CAF. Non vérifiable dans l'entrepôt : il faudrait la date de constitution du
-fichier côté CAF.
+
+**Reprise du 2026-10-02 — l'hypothèse du fichier CAF périmé est abandonnée.** Elle était
+la conclusion de septembre, sur la foi de la signature Aircall. Trois mesures
+indépendantes la contredisent : les appels courts sont des **répondeurs** et non des
+tiers qui raccrochent (`d13`), les SMS arrivent et les familles y répondent au taux des
+bonnes cohortes (`d14`), et surtout **`2026/04/20` remonte à 60,2 % en session 1** avec
+les mêmes familles et les mêmes numéros (`d15`). Des coordonnées périmées ne
+redeviennent pas valides en treize jours. Il n'est donc plus nécessaire d'aller chercher
+la date de constitution du fichier côté CAF.
+
+**Ce qu'il faut retenir à la place.** Le mécanisme est établi, la cause ne l'est pas, et
+la liste de ce qui est écarté est maintenant assez longue pour que ce soit le résultat
+lui-même. Les six contraintes que toute hypothèse nouvelle doit satisfaire ensemble sont
+listées dans `sql/diagnostic/README.md`. Deux remarques pour cadrer la lecture :
+
+- **Les deux cohortes d'avril n'ont pas le même profil** — ne plus les traiter en bloc.
+  `2026/04/20` fait un trou isolé en session 0 (49,0) puis revient dans la moyenne
+  (60,2 en S1). `2026/04/06` s'enfonce au contraire en session 1 (57,3 → 46,3).
+- **La lecture la plus probable reste celle de `d08`** : −11,6 n'est qu'à 1,8 écart-type
+  de la dispersion normale, et sur 42 cellules le minimum attendu par le seul hasard est
+  d'environ −13. Il est possible qu'il n'y ait pas de cause unique à trouver.
+
+Seule piste encore ouverte, et elle est bornée : la gestion des créneaux pendant la
+montée en charge du dispositif RDV, qui porte **au plus 4,5 points sur 19,6** (`d15`).
 
 **Le cas 2026/05/18**, qui résistait au diagnostic, s'explique en partie par le RDV :
 son 61,7 % global repose sur 36,7 % de RDV pris. Elle partage par ailleurs la signature

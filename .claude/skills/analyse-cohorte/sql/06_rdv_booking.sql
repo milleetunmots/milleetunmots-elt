@@ -4,6 +4,13 @@
 -- comparaison entre cohortes doit en tenir compte : une partie de la hausse du taux
 -- d'OK des cohortes recentes vient du deploiement du RDV, pas d'une meilleure execution.
 -- has_booking = RDV pris, TOUS STATUTS CONFONDUS (annulations incluses).
+-- has_booking_proposal = SMS portant un lien Calendly DU DISPOSITIF (utm_source=1001mots).
+-- Regle resserree le 2026-09-29 : l'ancien ILIKE '%calendly%' comptait aussi les Calendly
+-- PERSONNELS de quelques accompagnantes (des 2024, jamais convertis en RDV traçable) et les
+-- SMS de confirmation/rappel, qui suivent un RDV au lieu de le proposer. Voir SKILL.md.
+-- Le dénominateur ci-dessous est filtré sur les appels au statut renseigné (règle 1) : pour
+-- un taux de proposition rapporté aux familles INSCRITES, retirer ce filtre -- l'envoi du SMS
+-- ne dépend pas du statut. L'écart est faible (0,1 à 0,8 pt sur 2026).
 -- /!\ NE PAS LIRE ok_avec_rdv - ok_sans_rdv COMME L'EFFET DU DISPOSITIF.
 -- Cet ecart de 25-30 pts est tres majoritairement de la SELECTION : les familles qui
 -- prennent RDV sont deja celles qui repondent. L'effet reel, mesure hors biais par

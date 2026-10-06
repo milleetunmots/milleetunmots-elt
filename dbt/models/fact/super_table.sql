@@ -293,17 +293,31 @@ bookings AS (
 ),
 
 -- CTE indiquant, par famille, si un RDV a été proposé à chaque session d'appel
--- Proposition = SMS contenant un lien Calendly (même logique que calendly_sms dans sessions_with_booking)
--- Imputation à la session selon date_occurred et les dates du groupe du plus jeune enfant :
---   session 0 = SMS envoyé jusqu'à date_call0_end
---   session N = SMS envoyé entre date_call(N-1)_end et date_callN_end
+-- Proposition = SMS contenant un lien Calendly DU DISPOSITIF, identifie par l'UTM
+-- `utm_source=1001mots`. Ce marqueur apparait en fevrier 2026, date de lancement du
+-- dispositif, et il discrimine trois choses que le simple ILIKE '%calendly%' melangeait :
+--   * les liens Calendly PERSONNELS de quelques accompagnantes (de la forme
+--     calendly.com/<prenom>1001mots ou calendly.com/<nom>), utilises hors
+--     dispositif des 2024. Ces RDV ne
+--     remontent jamais dans scheduled_calls : les compter fabriquait un taux de proposition
+--     de 45 a 49 % sur 2024/06 et 2024/09 avec 0 % de RDV pris ;
+--   * les SMS de CONFIRMATION et de RAPPEL ("Vous avez RDV le...", "Rappel : vous avez RDV
+--     demain avec..."), qui contiennent aussi un lien Calendly mais sont la CONSEQUENCE
+--     d'un RDV deja pris, pas une proposition ;
+--   * les vraies invitations du dispositif, seules porteuses des UTM.
+-- Imputation a la session par `utm_campaign=callN`, present sur tous les liens du
+-- dispositif. Repli sur les dates du groupe du plus jeune enfant si l'UTM manque :
+--   session 0 = SMS envoye jusqu'a date_call0_end
+--   session N = SMS envoye entre date_call(N-1)_end et date_callN_end
+-- Les deux methodes concordent a 98,9 % ; l'UTM rattrape en plus les 186 SMS envoyes
+-- apres date_call3_end, que la regle par dates laissait tomber.
 booking_proposals AS (
     SELECT
         yc.family_id,
-        MAX(CASE WHEN e.date_occurred <= g.date_call0_end THEN 1 ELSE 0 END) AS has_booking_proposal_call0,
-        MAX(CASE WHEN e.date_occurred > g.date_call0_end AND e.date_occurred <= g.date_call1_end THEN 1 ELSE 0 END) AS has_booking_proposal_call1,
-        MAX(CASE WHEN e.date_occurred > g.date_call1_end AND e.date_occurred <= g.date_call2_end THEN 1 ELSE 0 END) AS has_booking_proposal_call2,
-        MAX(CASE WHEN e.date_occurred > g.date_call2_end AND e.date_occurred <= g.date_call3_end THEN 1 ELSE 0 END) AS has_booking_proposal_call3
+        MAX(CASE WHEN prop.call_session = 0 THEN 1 ELSE 0 END) AS has_booking_proposal_call0,
+        MAX(CASE WHEN prop.call_session = 1 THEN 1 ELSE 0 END) AS has_booking_proposal_call1,
+        MAX(CASE WHEN prop.call_session = 2 THEN 1 ELSE 0 END) AS has_booking_proposal_call2,
+        MAX(CASE WHEN prop.call_session = 3 THEN 1 ELSE 0 END) AS has_booking_proposal_call3
     FROM events AS e
     INNER JOIN parent_enfant AS pe
         ON pe.parent_id = e.related_id
@@ -311,8 +325,19 @@ booking_proposals AS (
         ON yc.family_id = pe.child_support_id
     INNER JOIN groups_info AS g
         ON g.group_id = yc.group_id
+    CROSS JOIN LATERAL (
+        SELECT COALESCE(
+            TRY_TO_NUMBER(REGEXP_SUBSTR(e.body, 'utm_campaign=call([0-3])', 1, 1, 'e', 1)),
+            CASE
+                WHEN e.date_occurred <= g.date_call0_end THEN 0
+                WHEN e.date_occurred <= g.date_call1_end THEN 1
+                WHEN e.date_occurred <= g.date_call2_end THEN 2
+                WHEN e.date_occurred <= g.date_call3_end THEN 3
+            END
+        ) AS call_session
+    ) AS prop
     WHERE e.type = 'Events::TextMessage'
-      AND e.body ILIKE '%calendly%'
+      AND e.body ILIKE '%utm_source=1001mots%'
     GROUP BY yc.family_id
 )
 
