@@ -30,6 +30,15 @@ sources:
     schema: FACT
     tables:
       - name: super_table_anonymised2
+      # Produite par admin/anonymize_aircall_ner.py (passe GLiNER), pas par dbt :
+      # clee sur le hash du texte, consommee par aircall_transcriptions_anonymised.
+      - name: aircall_transcriptions_ner
+      # Produite par admin/segment_appels_llm.py, pas par dbt : la grille a six
+      # criteres appliquee aux transcriptions anonymisees, une ligne par appel
+      # et par passe. Contient aussi les 300 notes posees a la main, reprises du
+      # seed segmentation_appel (origine_note = 'manuel'). Consommee par
+      # aircall_analysis, qui ne garde que la note la plus recente de chaque appel.
+      - name: aircall_segmentation
 
   - name: seed
     database: MOTS_DW

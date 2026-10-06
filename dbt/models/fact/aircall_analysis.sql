@@ -23,10 +23,21 @@ asup as (
     from {{ source('seed', 'analyse_supervision') }}
 ),
 
--- Segmentation qualitative des appels (seed) : 1 ligne par appel, clé = id_appel
+-- Segmentation qualitative des appels : 1 ligne par appel, clé = id_appel.
+--
+-- Produite par admin/segment_appels_llm.py (grille à six critères appliquée aux
+-- transcriptions anonymisées), et contenant aussi les 300 notes posées à la main
+-- qui vivaient dans le seed segmentation_appel — ce seed reste dans le dépôt
+-- comme archive de cette campagne manuelle, mais n'alimente plus ce modèle.
+--
+-- La table est en ajout seul : renoter un appel y empile une seconde ligne.
+-- Le qualify ne garde que la note la plus récente, donc la dernière grille
+-- appliquée. Pour comparer deux grilles entre elles, lire la table directement
+-- et filtrer sur prompt_hash.
 seg as (
     select *
-    from {{ source('seed', 'segmentation_appel') }}
+    from {{ source('fact_anonymised', 'aircall_segmentation') }}
+    qualify row_number() over (partition by id_appel order by date_traite desc) = 1
 ),
 
 st as (
@@ -166,6 +177,28 @@ select
     at.pm_pratiques_creusees,
     asup.niveau_appel,
 
+    -- Accord d'enregistrement, évalué avant tout le reste.
+    --
+    -- Deux valeurs : « accord » ou « pas_d_accord ». C'est la condition d'accès
+    -- à la grille : sans accord, aucun critère n'est noté, le flag vaut
+    -- SANS_ACCORD et les colonnes segmentation_c1 à c6 sont NULL — pas 0. Un
+    -- zéro se mêlerait aux moyennes et ferait passer pour mauvaise une
+    -- accompagnante qu'on n'a pas le droit d'évaluer.
+    --
+    -- « pas_d_accord » ne distingue pas le refus de la demande jamais faite ni
+    -- de la réponse ambiguë : le besoin est binaire — a-t-on le droit
+    -- d'analyser cet appel — et qualifier l'absence demandait au modèle un
+    -- jugement de plus sur l'élément le moins observable de la transcription.
+    -- En cas de doute, c'est « pas_d_accord ».
+    --
+    -- segmentation_accord_verbatim porte la demande et la réponse citées, pour
+    -- qu'une vérification ne demande pas de réécouter l'enregistrement.
+    --
+    -- NULL sur les 300 notes manuelles : cette campagne est antérieure à la
+    -- vérification de l'accord.
+    seg.accord_enregistrement as segmentation_accord_enregistrement,
+    seg.accord_verbatim       as segmentation_accord_verbatim,
+
     -- Segmentation de l'appel (seed segmentation_appel)
     seg.flag                as segmentation_flag,
     seg.score               as segmentation_score,
@@ -181,6 +214,8 @@ select
     seg.origine_pm          as segmentation_origine_pm,
     seg.manques             as segmentation_manques,
     seg.verbatim_cle        as segmentation_verbatim_cle,
+    seg.origine_note        as segmentation_origine_note,
+    seg.modele              as segmentation_modele,
     case when seg.id_appel is not null then 1 else 0 end as has_segmentation,
 
     row_number() over (partition by final.family_id, final.call_session order by ac.date_started) as call_number
