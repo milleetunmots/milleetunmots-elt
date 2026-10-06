@@ -15,3 +15,16 @@ gliner_model/
 admin/upload_gliner_to_snowflake.py
 admin/anonymize_transcripts.py
 admin/Test/
+
+# Artefacts de revue de l'anonymisation : ils contiennent les chaines ORIGINALES
+# en clair (colonne "original" du CSV, avant/apres de la revue HTML). Ce sont des
+# outils de controle qualite locaux, ils ne doivent jamais partir en depot.
+admin/rapport_aircall_ner.csv
+admin/revue_aircall_ner.html
+admin/__pycache__/
+
+# Chantier de pseudonymisation des enquetes (admin/camille) : 18 Mo d'archives,
+# de caches et de revues HTML qui contiennent les transcriptions AVANT
+# traitement, donc les noms en clair. Meme raison que ci-dessus : le
+# dossier entier reste hors du depot.
+admin/camille/
