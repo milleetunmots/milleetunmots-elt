@@ -81,11 +81,11 @@ select
         else null
     end as is_multilingual,
 
-    -- Langue déclarée : champ libre, 720 libellés distincts pour 1 198 réponses
-    -- même après passage en minuscules. À regrouper avant tout usage en BI
-    -- ("arabe", "arabe marocain", "arabe algérien"... sont comptés séparément).
-    cs.second_language,
-    lower(cs.second_language) as second_language_clean
+    -- Langue déclarée : texte libre renseigné depuis 2019, 10 512 familles et
+    -- 3 091 orthographes distinctes, avec des listes dans un même champ. Le
+    -- découpage et le regroupement sont dans family_languages : une ligne par
+    -- couple (famille, langue). Ne pas compter sur cette colonne brute.
+    cs.second_language
 
 from child_supports cs
 left join youngest_child yc

@@ -24,6 +24,18 @@ enrollment_reasons_agg as (
     group by family_id
 ),
 
+-- Langues regroupées, remises à plat. Même usage que enrollment_reasons_list :
+-- lisible sur une ligne, pas fait pour compter. Pour compter par langue, passer
+-- par family_languages.
+languages_agg as (
+    select
+        family_id,
+        listagg(distinct language_label, ', ') within group (order by language_label) as languages_list
+    from {{ ref('family_languages') }}
+    where is_language
+    group by family_id
+),
+
 children_sources as (
     select *
     from {{ ref('stg_1001mots_app__children_sources') }}
@@ -239,7 +251,7 @@ select
     -- tant que personne n'a répondu : filtrer sur is_multilingual_known.
     fe.is_multilingual,
     fe.is_multilingual_known,
-    fe.second_language_clean,
+    la.languages_list,
 
     -- accompagnement indicators
     
@@ -276,3 +288,5 @@ left join family_enrollment fe
     on fe.family_id = cpf.family_id
 left join enrollment_reasons_agg era
     on era.family_id = cpf.family_id
+left join languages_agg la
+    on la.family_id = cpf.family_id

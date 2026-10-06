@@ -41,12 +41,11 @@ models:
         description: >
           La question a-t-elle reçu une réponse ? Dénominateur de la part de
           familles multilingues.
-      - name: second_language_clean
+      - name: second_language
         description: >
-          Langue déclarée, en minuscules. Champ libre et très dispersé
-          (720 libellés distincts pour 1 198 réponses au 2026-09-29) : à
-          regrouper avant tout usage en BI, "arabe", "arabe marocain" et
-          "arabe algérien" étant comptés séparément.
+          Langue déclarée, texte libre renseigné depuis 2019 : 10 512 familles
+          pour 3 091 orthographes distinctes, avec plusieurs langues dans un même
+          champ. Brut, non exploitable tel quel — passer par family_languages.
 
   - name: family_enrollment_reasons
     description: >
@@ -77,3 +76,59 @@ models:
         description: >
           La réponse vient-elle du champ libre "Autre" ? Ces lignes sont des
           verbatims uniques (38 au 2026-09-29), à exclure des comptages par option.
+
+  - name: family_languages
+    description: >
+      Une ligne par couple (famille, langue parlée à la maison). Découpe et
+      regroupe le texte libre child_supports.second_language, qui mélange listes,
+      annotations, pays et fautes de frappe. La table de correspondance est dans
+      le seed language_mapping : c'est lui qu'il faut éditer pour corriger un
+      regroupement. 96 % des tokens sont reconnus au 2026-10-02 ; le reliquat
+      est une longue traîne de fautes de frappe à une occurrence.
+    columns:
+      - name: family_id
+        description: Identifiant de la famille.
+        tests:
+          - not_null
+      - name: language_token
+        description: >
+          Token nettoyé issu du découpage, avant correspondance. C'est la valeur
+          à reprendre pour enrichir le seed quand is_unmapped est vrai.
+      - name: language_label
+        description: >
+          Langue canonique. null quand le token n'est pas dans le seed.
+      - name: is_language
+        description: >
+          Faux quand la réponse ne nomme pas une langue : non-réponse
+          ("papa", "non", "?") ou pays cité à la place de la langue
+          ("sénégalais", "mali"). Filtrer dessus pour tout comptage de langues.
+      - name: is_unmapped
+        description: >
+          Le token n'a pas de correspondance dans le seed. Ces lignes sont
+          conservées plutôt que perdues, pour rendre visible ce qui reste à mapper.
+      - name: is_french
+        description: >
+          Pratique pour isoler les familles qui déclarent une autre langue que
+          le français — le champ contient souvent "français" en plus.
+
+seeds:
+  - name: language_mapping
+    description: >
+      Correspondance variante observée -> langue canonique, pour family_languages.
+      492 variantes, 139 libellés. Conventions retenues, à discuter librement :
+      les variantes régionales de l'arabe sont repliées sur "Arabe" ; un pays
+      cité à la place d'une langue n'est pas deviné et sort avec is_language à
+      faux ; une variante qui nomme plusieurs langues sans séparateur
+      ("français arabe") porte les libellés séparés par une virgule.
+    columns:
+      - name: language_variant
+        description: Token nettoyé, en minuscules, tel que produit par family_languages.
+        tests:
+          - unique
+          - not_null
+      - name: language_label
+        description: >
+          Libellé canonique, ou plusieurs séparés par une virgule. Pour les
+          réponses qui ne nomment pas une langue, un libellé entre parenthèses.
+      - name: is_language
+        description: Faux pour les non-réponses et les pays cités.

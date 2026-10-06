@@ -75,7 +75,9 @@ select
     coalesce(to_date(nullif(object_json:created_at::string, '')), to_date(nullif(source.created_at::string, ''))) as date_created,
     coalesce(to_date(nullif(object_json:updated_at::string, '')), to_date(nullif(source.updated_at::string, ''))) as date_updated,
     coalesce(object_json:is_bilingual::string, source.is_bilingual::string) as is_bilingual,
-    -- Données du formulaire d'inscription, collectées depuis le 2026-03-27.
+    -- Données du formulaire d'inscription. enrollment_reasons est collectée
+    -- depuis le 2026-03-27 ; second_language et is_bilingual existent, elles,
+    -- depuis 2019 et 2022.
     -- Elles sont lues directement dans source, sans passer par object_json :
     -- le `object` de PaperTrail contient l'état AVANT la dernière modification,
     -- donc le coalesce utilisé pour les autres colonnes renverrait un tableau
