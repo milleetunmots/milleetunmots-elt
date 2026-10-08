@@ -51,3 +51,34 @@ sources:
       - name: seed_mecene
       - name: factivation
       - name: segmentation_appel
+      # Table de correspondance variante -> langue, consommee par
+      # family_languages. Chargee par `dbt seed` depuis un CSV qui reste hors du
+      # depot (.gitignore interdit tout *.csv) : elle est donc declaree en
+      # source, et non appelee par ref(), sinon le parsing casse partout ou le
+      # fichier est absent. Pour la corriger : editer le CSV local, puis
+      # `dbt seed --select language_mapping`.
+      - name: language_mapping
+        description: >
+          Correspondance variante observee -> langue canonique, pour
+          family_languages. 492 variantes, 139 libelles. Conventions retenues,
+          a discuter librement : les variantes regionales de l'arabe sont
+          repliees sur "Arabe" ; un pays cite a la place d'une langue n'est pas
+          devine et sort avec is_language a faux ; une variante qui nomme
+          plusieurs langues sans separateur ("francais arabe") porte les
+          libelles separes par une virgule.
+        columns:
+          - name: language_variant
+            description: >
+              Token nettoye, en minuscules, tel que produit par family_languages.
+            tests:
+              - unique
+              - not_null
+          - name: language_label
+            description: >
+              Langue canonique, ou "(reponse non exploitable)" quand la reponse
+              ne nomme pas de langue. Peut porter plusieurs libelles separes par
+              une virgule.
+          - name: is_language
+            description: >
+              Faux quand la variante ne nomme pas une langue : non-reponse
+              ("papa", "non", "?") ou pays cite a la place de la langue.

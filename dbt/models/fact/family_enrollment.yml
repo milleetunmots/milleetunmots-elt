@@ -110,25 +110,3 @@ models:
         description: >
           Pratique pour isoler les familles qui déclarent une autre langue que
           le français — le champ contient souvent "français" en plus.
-
-seeds:
-  - name: language_mapping
-    description: >
-      Correspondance variante observée -> langue canonique, pour family_languages.
-      492 variantes, 139 libellés. Conventions retenues, à discuter librement :
-      les variantes régionales de l'arabe sont repliées sur "Arabe" ; un pays
-      cité à la place d'une langue n'est pas deviné et sort avec is_language à
-      faux ; une variante qui nomme plusieurs langues sans séparateur
-      ("français arabe") porte les libellés séparés par une virgule.
-    columns:
-      - name: language_variant
-        description: Token nettoyé, en minuscules, tel que produit par family_languages.
-        tests:
-          - unique
-          - not_null
-      - name: language_label
-        description: >
-          Libellé canonique, ou plusieurs séparés par une virgule. Pour les
-          réponses qui ne nomment pas une langue, un libellé entre parenthèses.
-      - name: is_language
-        description: Faux pour les non-réponses et les pays cités.

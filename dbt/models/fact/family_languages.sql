@@ -6,9 +6,16 @@
 -- ("arabe (papa)"), des pays à la place des langues ("sénégalais", "mali"), des
 -- fautes de frappe ("soniké", "frçs") et des non-réponses ("papa", "?").
 --
--- Ce modèle le découpe, le nettoie et le rattache au seed language_mapping,
--- qui porte la table de correspondance variante -> langue. Pour corriger ou
--- compléter un regroupement, éditer le seed, pas ce fichier.
+-- Ce modèle le découpe, le nettoie et le rattache à language_mapping, qui porte
+-- la table de correspondance variante -> langue. Pour corriger ou compléter un
+-- regroupement, éditer cette table, pas ce fichier.
+--
+-- Elle est chargée par `dbt seed` depuis dbt/seeds/language_mapping.csv, qui
+-- reste hors du dépôt (.gitignore exclut tout *.csv). On l'appelle donc par
+-- source() et non par ref() : avec ref(), tout environnement qui part du dépôt
+-- -- dbt Cloud, CI, un clone -- casse au parsing, le nœud étant introuvable.
+-- Corriger un regroupement se fait donc en deux temps : éditer le CSV local,
+-- puis `dbt seed --select language_mapping`.
 --
 -- Couverture au 2026-10-02 : 96 % des tokens sont reconnus. Le reste ressort
 -- avec language_label à null et is_unmapped à true, le token brut conservé dans
@@ -21,7 +28,7 @@ with family_enrollment as (
 
 language_mapping as (
     select *
-    from {{ ref('language_mapping') }}
+    from {{ source('seed', 'language_mapping') }}
 ),
 
 -- Les séparateurs sont hétérogènes : virgule, "et", tiret entouré d'espaces,
