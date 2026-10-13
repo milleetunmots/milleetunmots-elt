@@ -1,0 +1,335 @@
+version: 2
+
+models:
+  - name: suivi_engagements
+    description: >
+      Suivi des engagements du bureau : une ligne par projet (= financeur) et
+      par année de suivi. Le quota vendu et la projection viennent de la feuille
+      Google du bureau (source projects), le reste de l'application.
+      Deux mesures de ce qui a été fait, qui ne disent pas la même chose et ne
+      s'additionnent pas : nb_enfants_suivis compte les enfants accompagnés au
+      moins un jour dans l'année (portée), quota_consomme somme les places
+      réellement consommées (comptabilité). 7 900 enfants touchés en 2026 pour
+      3 685 places consommées au 13 octobre : un cycle dure 174 jours et
+      chevauche deux années civiles.
+      Ne jamais sommer les années : un même enfant compte sur deux années
+      consécutives.
+    columns:
+      - name: project_code
+        description: >
+          Code du projet, dérivé du libellé de la feuille du bureau :
+          'CD_93', 'CAF_01', 'CE_PARIS_18', 'MAIRIE_LYON', 'AUTRES'. Clé de
+          jointure avec source_project. 'BAO' (bouche-à-oreille et
+          réinscriptions) et 'TEST' n'existent que côté application : ils n'ont
+          pas d'engagement.
+        tests:
+          - not_null
+      - name: annee
+        description: >
+          Année de suivi, et année de l'engagement. Ce n'est pas l'année
+          d'inscription : un enfant inscrit en 2025 compte pour 2026 si son
+          accompagnement court encore.
+        tests:
+          - not_null
+      - name: quota_vendu
+        description: >
+          Nombre d'enfants contractualisé avec le financeur pour l'année, tel
+          que saisi dans la feuille du bureau. null pour un projet sans chiffre
+          engagé (les deux lignes ARS) et pour les lignes qui n'existent que
+          côté application. Les taux d'atteinte sont null quand il est null ou
+          nul, et non 0 : pas d'objectif, pas de retard.
+      - name: quota_projete_bureau
+        description: >
+          La projection de l'équipe, saisie dans la feuille. À ne pas confondre
+          avec quota_projete_fin_annee, qui est calculée.
+      - name: nb_enfants_suivis
+        description: >
+          Mesure de portée : enfants accompagnés au moins un jour dans l'année,
+          les trois millésimes confondus. Hors enfants supprimés, sources de
+          test, cohortes exclues de l'analytics et inscrits jamais pris en
+          accompagnement.
+      - name: quota_consomme
+        description: >
+          Mesure comptable : somme des places consommées à date. Une place vaut
+          le cycle de quatre appels de la cohorte, 174 jours ; un enfant allé au
+          bout de son cycle dans l'année vaut 1, un enfant entré en novembre
+          0,15, un enfant désengagé à 86 jours 0,49. C'est la mesure à comparer
+          au quota vendu, et la seule comparable au temps écoulé.
+      - name: quota_acquis_fin_annee
+        description: >
+          Le même quota compté jusqu'au 31 décembre pour les enfants DÉJÀ entrés
+          en cohorte. Déterministe : aucune hypothèse, c'est ce qui est acquis.
+      - name: quota_projete_fin_annee
+        description: >
+          quota_acquis_fin_annee plus les entrées encore attendues d'ici la fin
+          de l'année. Partie pariée, voir methode_projection.
+      - name: quota_annee_precedente
+        description: >
+          Part du quota de l'année apportée par les enfants entrés l'année
+          précédente. Avec part_quota_annee_precedente : un projet qui n'inscrit
+          plus tient son quota un an de plus avant de décrocher.
+      - name: nb_enfants_cycle_surtout_annee_suivante
+        description: >
+          Enfants comptés sur l'année dont la majorité du cycle tombera l'année
+          suivante : 496 en 2026, soit 6 % de la portée. Un enfant entré en
+          novembre est bien une entrée de l'année — il compte dans sa portée —
+          mais il ne délivrera l'essentiel de sa place qu'en N+1. À regarder avec
+          quota_reporte_annee_suivante.
+      - name: quota_reporte_annee_suivante
+        description: >
+          Places que les enfants comptés cette année délivreront l'année
+          suivante : 915 pour 2026. C'est le matelas de l'année prochaine, déjà
+          acquis.
+      - name: quota_deja_delivre_annee_precedente
+        description: >
+          Places que ces mêmes enfants avaient déjà délivrées l'année
+          précédente : 934 pour 2026. À ne pas confondre avec
+          quota_annee_precedente, qui est la part du quota DE CETTE ANNÉE
+          apportée par les enfants entrés l'année précédente.
+      - name: nb_enfants_annee_precedente
+        description: >
+          Ventilation de la portée. Cycle encore en cours au 1er janvier : ces
+          enfants sont entrés en cohorte avant l'année. 27 % de la portée 2026.
+          La borne est la fin de cycle et non la date du statut 'stopped', posé
+          en moyenne 127 jours après le dernier appel : 1 791 enfants dont le
+          cycle s'était achevé en 2025 tombaient sinon dans l'année 2026 sans y
+          être accompagnés un seul jour.
+      - name: nb_enfants_annee_courante
+        description: Cohorte démarrée dans l'année.
+      - name: nb_enfants_annee_suivante
+        description: >
+          Inscrits dans l'année, cohorte planifiée sur l'année suivante.
+          Structurellement faible en cours d'année (17 enfants pour 2026 au
+          13 octobre) : les cohortes ne sont planifiées que deux mois à l'avance.
+          Sur une année fermée, 622 enfants en 2025.
+      - name: nb_enfants_non_planifie
+        description: Inscrits dans l'année, en attente, aucune cohorte planifiée.
+      - name: nb_enfants_non_accompagnes
+        description: >
+          Hors total : inscrits dans l'année mais sans aucun jour de cycle
+          dedans — statut not_supported pour l'essentiel. Affichés pour que la
+          perte entre inscription et accompagnement soit chiffrable plutôt que
+          silencieuse.
+      - name: nb_enfants_nouveaux
+        description: >
+          Entrants de l'année : catégories B + C + D, soit la portée moins les
+          enfants venus de l'année précédente.
+      - name: taux_atteinte_quota
+        description: quota_consomme / quota_vendu.
+      - name: taux_atteinte_portee
+        description: >
+          nb_enfants_suivis / quota_vendu. Mécaniquement plus élevé que le
+          précédent : il compte un enfant entré en décembre comme un enfant
+          accompagné toute l'année.
+      - name: taux_avancement_temps
+        description: >
+          Part de l'année écoulée au jour de la construction du modèle. 1 pour
+          une année passée, 0 pour une année à venir. C'est l'étalon du
+          taux_atteinte_quota.
+      - name: ecart_rythme
+        description: >
+          taux_atteinte_quota - taux_avancement_temps, en points. Négatif = en
+          retard sur le calendrier. C'est la colonne à trier pour savoir qui
+          relancer. null quand il n'y a pas d'engagement.
+      - name: methode_projection
+        description: >
+          Comment les entrées de fin d'année ont été estimées.
+          'saisonnalite_projet' : la part d'entrées tardives du projet l'an
+          dernier, utilisée seulement s'il avait au moins 50 entrées à la même
+          date. 'saisonnalite_globale' : la part mesurée tous projets confondus
+          (0,25 pour 2025), sinon le ratio divise par de petits nombres et
+          s'envole. 'aucune_entree' : le projet n'a aucune entrée cette année, il
+          n'y a rien à extrapoler — un partenariat qui démarre en novembre sera
+          donc projeté à 0, le bureau connaît son pipeline mieux que le modèle.
+          'annee_close' : année passée, pas de projection.
+      - name: nb_entrees_fin_annee_connues
+        description: >
+          Entrées en cohorte déjà planifiées après la date du jour. Elles sont
+          dans l'acquis, et sont déduites des entrées attendues pour ne pas être
+          comptées deux fois.
+      - name: nb_entrees_attendues_fin_annee
+        description: Entrées supplémentaires estimées d'ici le 31 décembre.
+      - name: nb_enfants_mesurables
+        description: >
+          Dénominateur du taux d'appels OK : enfants suivis dont la cohorte a
+          passé sa date de fin d'appel 1.
+      - name: taux_deux_appels_ok
+        description: >
+          nb_enfants_deux_appels_ok_mesurables / nb_enfants_mesurables. Ne jamais
+          le recalculer sur nb_enfants_suivis : le résultat mélangerait des
+          accompagnements terminés et des accompagnements qui n'ont pas commencé.
+      - name: is_hors_engagement
+        description: >
+          Le projet n'est pas dans la feuille du bureau alors que des enfants y
+          sont rattachés : partenariat non déclaré, source mal rattachée, ou
+          engagement terminé dont les accompagnements courent encore.
+      - name: is_sans_suivi
+        description: >
+          Le projet est dans la feuille mais aucun enfant n'y est suivi sur
+          l'année.
+
+  - name: suivi_engagements_enfant
+    description: >
+      Détail du suivi des engagements : une ligne par enfant ET par année de
+      suivi. Un enfant apparaît sur chaque année où il compte pour un financeur,
+      donc sur deux années consécutives dans le cas général : filtrer sur une
+      annee_suivi avant tout comptage, et compter les familles en
+      count(distinct family_id).
+      Les indicateurs d'appel sont de maille famille (un accompagnement par
+      famille) et repris de bureau : une fratrie porte le même deux_appels_ok sur
+      chacun de ses enfants.
+    columns:
+      - name: suivi_enfant_id
+        description: >
+          Clé de la table : l'enfant et son année de suivi.
+        tests:
+          - unique
+          - not_null
+      - name: child_id
+        description: >
+          Identifiant de l'enfant. Non unique ici : compter en
+          count(distinct child_id) sur une annee_suivi filtrée.
+        tests:
+          - not_null
+      - name: family_id
+        description: >
+          Identifiant de la famille (child_supports.id). 462 lignes n'en ont
+          pas : des inscriptions historiques, à 95 % du bouche-à-oreille de 2021
+          et 2022, antérieures à la fiche d'accompagnement. Elles comptent dans
+          le suivi mais ne portent aucun indicateur d'appel, d'où le test en
+          avertissement et non en erreur.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+      - name: project_code
+        description: Financeur de la source de l'enfant, via source_project.
+        tests:
+          - not_null
+      - name: annee_suivi
+        description: Année civile pour laquelle cet enfant est compté.
+        tests:
+          - not_null
+      - name: categorie_suivi
+        description: >
+          Ventilation explicite du millésime, en cinq cas ordonnés :
+          A. accompagnement en cours au 1er janvier (vient de l'année
+          précédente) ; B. accompagnement commencé dans l'année ; C. inscrit,
+          accompagnement l'année suivante ; D. inscrit, cohorte non planifiée ;
+          E. inscrit, non accompagné (hors engagement). Même découpe que les
+          macros accompagnement_annee_n_* lues par mecene, mais bornée par une
+          année passée en clair et non par current_date : la ligne 2026 ne
+          bougera donc plus au 1er janvier 2027.
+        tests:
+          - not_null
+      - name: rattachement_temporel
+        description: >
+          Le même en trois temps plus un : annee_precedente, annee_courante,
+          annee_suivante, non_planifie, non_accompagne.
+      - name: quota_annee
+        description: >
+          Part de place consommée par cet enfant dans l'année : 1 s'il a fait son
+          cycle de quatre appels entier dans l'année, 0,15 s'il est entré en
+          novembre, 0,49 s'il a décroché à 86 jours, 0 si son accompagnement n'a
+          pas commencé. C'est le « en partie » rendu mesurable, et la répartition
+          du quota entre les années. Sommée, elle donne le quota du projet.
+          Dénominateur : le cycle de la cohorte (date_call3_end - date_started),
+          174 jours, stable depuis 2019 et toujours renseigné. Ni la fenêtre
+          administrative de la cohorte (343 jours, qui raboterait le quota de
+          moitié), ni la durée réelle de chaque enfant (un enfant qui décroche au
+          bout de trois semaines vaudrait alors une place pleine, étant son
+          propre dénominateur).
+          En 2026, une entrée de l'année pèse 0,64 en moyenne, un report de
+          l'année précédente 0,28.
+      - name: quota_annee_a_date
+        description: >
+          Le même, arrêté à aujourd'hui : c'est lui qui se compare au temps
+          écoulé. Identique à quota_annee pour une année passée.
+      - name: date_fin_quota
+        description: >
+          Fin retenue pour le quota : la fin réelle de l'accompagnement,
+          plafonnée à la fin du cycle. Le statut 'stopped' est posé en moyenne
+          232 jours après le début, soit deux mois après le dernier appel : sans
+          ce plafond, un enfant allé au bout de son cycle vaudrait 1,33 place.
+      - name: date_inscription
+        description: >
+          Date d'inscription de l'enfant, qui porte annee_inscription — à ne pas
+          confondre avec annee_suivi. Un cadet inscrit l'année suivante compte
+          pour l'année suivante.
+      - name: date_fin_accompagnement
+        description: >
+          Fin réelle : la fin de cohorte, ou la sortie si elle est arrivée avant
+          (lue dans l'historique PaperTrail). Même calcul que ended_at_perso dans
+          mecene. Attention aux deux statuts qu'elle mélange : 'stopped' tombe en
+          moyenne 232 jours après le début et marque la fin normale du cycle,
+          'disengaged' tombe à 86 jours et marque le décrochage réel. 5 313 et
+          2 650 enfants respectivement sur les cohortes 2025.
+      - name: is_mesurable
+        description: >
+          La cohorte de l'enfant a passé sa date de fin d'appel 1 : le
+          deux_appels_ok de sa famille est significatif.
+      - name: is_source_test
+        description: >
+          Source de test ou de démonstration de l'application. Ces enfants sont
+          réels mais ne doivent être comptés pour aucun financeur : 63 enfants
+          inscrits en 2026 sur la source « PMI Test ».
+      - name: is_sans_financeur
+        description: >
+          Inscription par bouche-à-oreille, entourage ou réinscription directe
+          (code 'BAO'). Personne ne les finance : les garder dans « Autres
+          petits partenaires » gonflerait son taux d'atteinte.
+      - name: is_hors_feuille
+        description: >
+          La source retombe sur un financeur absent de la feuille du bureau.
+          Signal de partenariat à déclarer ; ces enfants sont comptés dans
+          'AUTRES' pour qu'aucun n'échappe au total.
+
+  - name: source_project
+    description: >
+      Table de correspondance entre les sources d'inscription de l'application
+      et les projets (= financeurs) de la feuille du bureau. C'est ici qu'on
+      intervient à l'ouverture d'un partenariat. La règle générale est
+      canal x département (canal 'pmi' → 'CD_<dept>', la PMI étant un service du
+      Conseil Départemental ; canal 'caf' → 'CAF_<dept>') ; les exceptions sont
+      listées en tête du modèle, établies sur les commentaires saisis dans
+      l'application. Même convention que source_compta_analytique dans mecene.
+    columns:
+      - name: source_id
+        description: Identifiant de la source dans l'application.
+        tests:
+          - unique
+          - not_null
+      - name: project_code
+        description: Code du projet financeur, ou 'TEST', 'BAO', 'AUTRES'.
+        tests:
+          - not_null
+      - name: is_hors_feuille
+        description: >
+          Le code calculé ne correspond à aucune ligne de la feuille du bureau.
+          La source est alors versée à 'AUTRES' : ce drapeau est le seul moyen
+          de s'en apercevoir.
+
+  - name: stg_projects__engagements
+    description: >
+      Engagements et projections du bureau, une ligne par financeur et par
+      année, en nombre d'enfants. Lecture directe de la feuille Google
+      synchronisée dans MOTS_DL.PROJECTS. Une nouvelle année = une nouvelle
+      table dans la source et un union all ici.
+    columns:
+      - name: project_code
+        description: >
+          Code dérivé du libellé saisi. Les lignes « PMI 44 » et « PMI 60 » de
+          la feuille prennent le code 'CD_44' / 'CD_60' : côté application, ces
+          inscriptions arrivent par le canal PMI, et un département n'a jamais
+          les deux lignes à la fois.
+        tests:
+          - not_null
+          - unique
+      - name: project_label
+        description: Libellé exact saisi dans la feuille, tel qu'il est lu en séance.
+      - name: nb_enfants_engages
+        description: Ce qui est contractualisé avec le financeur. Peut être null ou 0.
+      - name: nb_enfants_projetes
+        description: >
+          Ce que l'équipe pense réaliser. Peut dépasser l'engagement (CAF 93) ou
+          être en dessous (CD 93) : les deux se lisent côte à côte.
