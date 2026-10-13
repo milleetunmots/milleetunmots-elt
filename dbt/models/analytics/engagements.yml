@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: engagements_par_projet
+    description: >
+      Vue d'exploitation du suivi des engagements : une ligne par financeur et
+      par année, colonnes ordonnées de la synthèse vers le détail et nommées
+      pour être lues sans documentation. Les six premières suffisent en séance,
+      le reste répond au « pourquoi ».
+      Simple renommage et réordonnancement de fact.suivi_engagements, où vivent
+      les règles de calcul : c'est là qu'il faut aller pour comprendre un
+      chiffre, et là qu'il faut corriger. Aucune année n'est filtrée.
+    columns:
+      - name: annee
+        description: Année de suivi. Filtrer dessus, toutes les années sont là.
+      - name: quota_vendu
+        description: >
+          Enfants contractualisés avec le financeur, saisis dans la feuille du
+          bureau. null pour les lignes sans engagement (ARS, BAO) : les
+          pourcentages d'atteinte sont alors null et non 0.
+      - name: places_consommees
+        description: >
+          Mesure comptable à date. Une place vaut le cycle de quatre appels,
+          174 jours : un enfant entré en novembre pèse 0,15.
+      - name: ecart_points
+        description: >
+          pct_quota - pct_temps, en points. Négatif = en retard sur le
+          calendrier. La colonne à trier pour savoir qui relancer.
+      - name: enfants_touches
+        description: >
+          Mesure de portée : enfants accompagnés au moins un jour dans l'année.
+          À ne jamais présenter pour places_consommees, et à ne jamais sommer
+          entre années — un enfant compte sur deux années consécutives.
+      - name: enfants_suivis_plutot_en_n_plus_1
+        description: >
+          Enfants comptés cette année dont la majorité du cycle tombera l'année
+          suivante. Un projet dont la portée est faite de ceux-là a un retard
+          structurel, pas récupérable sur l'année.
+      - name: places_reportees_sur_n_plus_1
+        description: Le matelas de l'année prochaine, déjà acquis.
+      - name: methode_projection
+        description: >
+          Comment entrees_attendues a été estimé : saisonnalite_projet,
+          saisonnalite_globale, aucune_entree (rien à extrapoler), annee_close.
+
+  - name: engagements_par_categorie
+    description: >
+      Ventilation d'une année d'engagement entre les millésimes : une ligne par
+      projet, année et catégorie, avec la règle de classement en clair et les
+      bornes de dates qui la justifient. Sert à vérifier un classement sans
+      ouvrir le modèle.
+      Les catégories A à D somment à la portée de l'année, E est hors total
+      (filtrer sur compte_dans_la_portee). Pas de pourcentage : une part
+      calculée en fenêtre dans une vue change de sens selon le filtre de
+      l'appelant.
+    columns:
+      - name: regle
+        description: La condition à laquelle les enfants de la ligne sont tombés dans la catégorie.
+      - name: compte_dans_la_portee
+        description: Faux pour la seule catégorie E, hors total.
+      - name: quota_moyen_par_enfant
+        description: >
+          Part de place moyenne. 0,51 pour un report de l'année précédente,
+          0,64 pour une entrée de l'année : c'est ce qui explique l'écart entre
+          la portée et le quota.
+
+  - name: engagements_par_millesime
+    description: >
+      Croisement des deux questions que l'on confond : d'où vient l'enfant
+      compté sur l'année (vient_de) et où tombe la majorité de son cycle
+      (ou_tombe_le_cycle). Une ligne par projet, année, provenance et millésime
+      d'atterrissage.
+      Les colonnes places_en_n_moins_1 / n / n_plus_1 sont relatives à la
+      colonne annee de la ligne, pas à une année civile fixe.
+    columns:
+      - name: vient_de
+        description: >
+          annee_precedente (cycle en cours au 1er janvier), annee_courante
+          (cycle commencé dans l'année), annee_suivante (cohorte planifiée sur
+          l'année suivante), non_planifie.
+      - name: ou_tombe_le_cycle
+        description: >
+          Où se trouve la majorité des places de cet enfant : en N-1, en N, en
+          N+1, ou cycle pas commencé. Préfixé d'un chiffre pour l'ordre de
+          lecture.
+      - name: nb_enfants
+        description: >
+          Somme contrôlée par test_engagements_par_millesime_coherence : par
+          projet et par année, elle doit retomber exactement sur
+          nb_enfants_suivis du suivi par projet.
