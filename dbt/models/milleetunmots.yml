@@ -25,6 +25,19 @@ sources:
       - name: scheduled_calls
       - name: tasks
 
+  # Feuille Google « Engagements / projections » du bureau, synchronisee dans
+  # MOTS_DL.PROJECTS par le pipeline Sheets (colonnes _sdc_*). Une ligne par
+  # financeur (CD, CAF, PMI, ARS, mairie, cite educative...), deux mesures en
+  # NOMBRE D'ENFANTS pour l'annee : engagement (ce qui est contractualise) et
+  # projection (ce qu'on pense realiser). Le nom de la table porte l'annee :
+  # une nouvelle annee = une nouvelle table a ajouter ici et a unir dans
+  # stg_projects__engagements. Le libelle du financeur arrive dans la colonne
+  # par_dpartements (en-tete « Par départements » de la feuille).
+  - name: projects
+    database: MOTS_DL
+    tables:
+      - name: export_data_2026
+
   - name: fact_anonymised
     database: MOTS_DW
     schema: FACT
