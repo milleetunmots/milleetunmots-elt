@@ -68,9 +68,15 @@ la moyenne, qui vaut alors toujours la valeur individuelle.
 des sessions, scanner `super_table` UNE fois avec le filtre, puis dépivoter
 depuis cette CTE — sinon seule la première branche de l'union est filtrée.
 
-**Les vues `analytics.*` sont lisibles depuis Metabase depuis le 2026-10-20**
-(grant + future grant sur le schéma). Toujours pointer les questions dessus
-plutôt que de recopier en SQL une logique qui vit déjà dans un modèle dbt.
+**Les vues `analytics.*` sont lisibles ET filtrables depuis le 2026-10-20**
+(grant Snowflake + future grant, puis synchronisation du catalogue Metabase).
+Toujours pointer les questions dessus plutôt que de recopier en SQL une logique
+qui vit déjà dans un modèle dbt.
+Attention, les deux conditions sont distinctes : un schéma fraîchement granté
+est interrogeable en SQL natif mais **pas encore filtrable** tant que Metabase
+n'a pas resynchronisé son catalogue — un field filter a besoin de l'identifiant
+du champ. Si `resout_champ` échoue sur « table absente du modèle de données »,
+c'est ça. `POST /api/database/3/sync_schema`.
 
 ## Les règles non négociables
 
@@ -111,3 +117,4 @@ correspondre à personne.
 |---|---|---|
 | `accompagnantes.yml` | `Claude/Accompagnantes` | [119](https://metabase.1001mots.org/dashboard/119) |
 | `fidelity.yml` | `Claude/Suivi Fidelity` | [118](https://metabase.1001mots.org/dashboard/118) |
+| `suivi_projet.yml` | `Claude/Suivi de projet` | [120](https://metabase.1001mots.org/dashboard/120) |

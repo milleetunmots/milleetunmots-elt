@@ -1,0 +1,240 @@
+# Suivi des engagements par projet : ou en est chaque financeur de ce qu'il a
+# contractualise, et qui relancer.
+#
+# OU VIVENT LES REGLES. Pas ici. Tout vient de analytics.engagements_par_projet,
+# vue d'exploitation de fact.suivi_engagements, ou vivent les calculs. Cette
+# spec ne fait que choisir quoi montrer et dans quel ordre.
+#
+# L'ANNEE N'EST PAS CODEE EN DUR : chaque carte lit la derniere annee pour
+# laquelle la feuille du bureau porte un engagement. Aujourd'hui 2026, demain
+# 2027 sans toucher a la spec.
+#
+# LA MESURE FACE AU QUOTA EST LE NOMBRE D'ENFANTS ENTRES EN COHORTE dans
+# l'annee (enfants_entres_dans_annee), et non les places consommees. Choix de
+# l'utilisateur, 2026-10-20 : ce qu'on a vendu, c'est un nombre d'enfants a
+# accompagner, on le compare donc a un nombre d'enfants reellement entres.
+# 6 020 entres face a 6 920 vendus en 2026.
+#
+# ET ON MONTRE LES DEUX NOMBRES, PAS UN TAUX. Ni pourcentage d'atteinte, ni
+# ecart au calendrier : le lecteur voit 6 920 et 6 020 cote a cote et tire sa
+# propre conclusion. La vue porte pct_entrees et ecart_points si le besoin
+# revient, mais les mettre en tuile transformerait un constat en jugement.
+#
+# PAS DE FILTRE ANNEE, DELIBEREMENT. Sans selection un field filter ne filtre
+# rien, et les tuiles sommeraient alors toutes les annees -- or un enfant a
+# cheval sur deux annees est compte dans les deux par la portee. Le perimetre
+# est donc fixe en dur a la derniere annee portant un engagement. Le filtre
+# Financeur, lui, ne presente pas ce risque.
+#
+# LES TROIS MESURES NE DISENT PAS LA MEME CHOSE et ne s'additionnent pas. C'est
+# le piege central de ce suivi, repris de l'en-tete de fact.suivi_engagements :
+#   enfants_entres      les entrees de l'annee, une unite chacune. C'est celle
+#                       qu'on compare au quota, et la seule des trois qui se
+#                       somme entre annees sans double comptage.
+#   places_consommees   mesure comptable. Une place vaut le cycle de 174 jours ;
+#                       un enfant entre en novembre pese 0,15. Utile pour savoir
+#                       ce qui a ete reellement delivre, pas pour le quota.
+#   enfants_touches     mesure de portee. Les enfants a qui 1001 mots a parle au
+#                       moins un jour dans l'annee. Toujours superieure, et a ne
+#                       JAMAIS presenter pour des places.
+# Un enfant a cheval sur deux annees est compte dans les deux par la portee,
+# partage entre elles par le quota, et compte une fois par les entrees.
+#
+# NE JAMAIS SOMMER LES ANNEES sur la portee ni sur les places : un meme enfant
+# compte sur deux annees consecutives. L'historique en bas de page se lit annee
+# par annee, jamais en cumul.
+
+name: Suivi de projet — engagements par financeur
+description: >
+  Ou en est chaque financeur de ce qu'il a contractualise. Le quota vendu vient
+  de la feuille du bureau, le reste de l'application. La mesure qu'on lui oppose
+  est le nombre d'enfants ayant demarre une cohorte dans l'annee : on a vendu un
+  nombre d'enfants a accompagner, on compte les enfants entres. Les deux nombres
+  sont montres cote a cote, sans taux ni ecart.
+  Attention, les trois mesures ne s'additionnent pas et ne se remplacent pas :
+  les entrees comptent les arrivees de l'annee, les enfants en cohorte y
+  ajoutent les reports, les places proratisent chacun selon la part de son cycle
+  tombant dans l'annee. Detail dans les notes en bas de page.
+  Spec : metabase/dashboards/suivi_projet.yml
+
+collection: Claude/Suivi de projet
+database: snowflake_dw
+
+filters:
+  - slug: financeur
+    display_name: Financeur
+    type: string/=
+    dimension: ANALYTICS.ENGAGEMENTS_PAR_PROJET.PROJET
+
+cards:
+
+  - name: Titre constat
+    display: heading
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: L'annee en cours — ce qui a ete vendu, ce qui est entre
+
+  - name: Projet · Quota vendu
+    display: scalar
+    row: 1
+    col: 0
+    size_x: 12
+    size_y: 4
+    filters: [financeur]
+    description: >
+      Enfants contractualises avec les financeurs sur l'annee en cours, saisis
+      dans la feuille du bureau. Les projets sans engagement -- bouche-a-oreille,
+      reinscriptions, sources de test -- n'y figurent pas : leur quota est vide
+      et non nul.
+    visualization:
+      scalar.field: Quota vendu
+    sql: |
+      select sum(quota_vendu) as "Quota vendu"
+      from analytics.engagements_par_projet
+      where annee = (select max(annee) from analytics.engagements_par_projet
+                     where quota_vendu is not null)
+        [[and {{financeur}}]]
+
+  - name: Projet · Enfants entres en cohorte
+    display: scalar
+    row: 1
+    col: 12
+    size_x: 12
+    size_y: 4
+    filters: [financeur]
+    description: >
+      Enfants ayant demarre une cohorte dans l'annee, comptes une unite chacun.
+      C'est la mesure qui se compare au quota vendu : on a vendu un nombre
+      d'enfants a accompagner, on compte les enfants reellement entres.
+      A ne pas confondre avec les enfants EN cohorte, qui ajoutent les reports de
+      l'annee precedente, ni avec les places consommees, qui proratisent chaque
+      enfant selon la part de son cycle tombant dans l'annee. Les trois sont
+      dans le tableau ci-dessous.
+    visualization:
+      scalar.field: Enfants entres en cohorte
+    sql: |
+      select sum(enfants_entres_dans_annee) as "Enfants entres en cohorte"
+      from analytics.engagements_par_projet
+      where annee = (select max(annee) from analytics.engagements_par_projet
+                     where quota_vendu is not null)
+        [[and {{financeur}}]]
+
+  - name: Titre financeurs
+    display: heading
+    row: 4
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Par financeur — du plus gros engagement au plus petit
+
+  - name: Projet · Le detail par financeur
+    display: table
+    row: 5
+    col: 0
+    size_x: 24
+    size_y: 8
+    filters: [financeur]
+    description: >
+      Une ligne par financeur ayant un engagement sur l'annee en cours, du plus
+      gros quota au plus petit. Les trois mesures sont cote a cote parce
+      qu'elles ne disent pas la meme chose : les ENTREES comptent les enfants
+      ayant demarre une cohorte dans l'annee, les enfants EN COHORTE y ajoutent
+      les reports de l'annee precedente, et les PLACES proratisent chacun selon
+      la part de son cycle tombant dans l'annee. Seule la premiere se compare au
+      quota vendu.
+    sql: |
+      select
+          projet                          as "Financeur",
+          quota_vendu                     as "Quota vendu",
+          enfants_entres_dans_annee       as "Enfants entres en cohorte",
+          enfants_en_cohorte              as "Enfants en cohorte, reports compris",
+          round(places_consommees, 0)     as "Places consommees",
+          enfants_touches                 as "Enfants touches dans l'annee"
+      from analytics.engagements_par_projet
+      where annee = (select max(annee) from analytics.engagements_par_projet
+                     where quota_vendu is not null)
+        and quota_vendu is not null
+        [[and {{financeur}}]]
+      order by quota_vendu desc
+
+  - name: Projet · Entrees en cohorte contre quota vendu
+    display: bar
+    row: 13
+    col: 0
+    size_x: 24
+    size_y: 7
+    filters: [financeur]
+    description: >
+      Les douze plus gros engagements de l'annee, enfants entres en cohorte face
+      au quota vendu. L'espace entre les deux barres est ce qu'il reste a
+      recruter.
+    visualization:
+      graph.dimensions: [Financeur]
+      graph.metrics: [Quota vendu, Enfants entres en cohorte]
+    sql: |
+      select
+          projet                      as "Financeur",
+          quota_vendu                 as "Quota vendu",
+          enfants_entres_dans_annee   as "Enfants entres en cohorte"
+      from analytics.engagements_par_projet
+      where annee = (select max(annee) from analytics.engagements_par_projet
+                     where quota_vendu is not null)
+        and quota_vendu is not null
+        [[and {{financeur}}]]
+      order by quota_vendu desc
+      limit 12
+
+  - name: Titre historique
+    display: heading
+    row: 20
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Historique — a lire annee par annee, jamais en cumul
+
+  - name: Projet · Entrees et portee par annee
+    display: bar
+    filters: [financeur]
+    row: 21
+    col: 0
+    size_x: 24
+    size_y: 7
+    description: >
+      Enfants entres en cohorte et enfants touches, par annee. Les deux courbes ne mesurent pas la meme chose et l'ecart entre
+      elles est normal : la portee compte tout enfant accompagne au moins un jour
+      dans l'annee, les entrees ne comptent que ceux qui ont demarre une cohorte.
+      Ne pas sommer les annees : un enfant a cheval sur deux annees est compte
+      dans les deux par la portee.
+    visualization:
+      graph.dimensions: [Annee]
+      graph.metrics: [Enfants entres en cohorte, Enfants touches dans l'annee]
+    sql: |
+      select
+          annee::varchar                      as "Annee",
+          sum(enfants_entres_dans_annee)      as "Enfants entres en cohorte",
+          sum(enfants_touches)                as "Enfants touches dans l'annee"
+      from analytics.engagements_par_projet
+      where annee between 2022 and (select max(annee) from analytics.engagements_par_projet
+                                    where quota_vendu is not null)
+        [[and {{financeur}}]]
+      group by 1
+      order by 1
+
+  - name: Notes de lecture projet
+    display: text
+    row: 28
+    col: 0
+    size_x: 24
+    size_y: 6
+    text: |
+      ## Comment lire ces chiffres
+
+      **Les trois mesures ne s'additionnent pas et ne se remplacent pas.** Les *enfants entres en cohorte* comptent ceux qui ont demarre un accompagnement dans l'annee, une unite chacun : c'est la mesure qu'on oppose au quota vendu. Les *enfants en cohorte* y ajoutent les reports de l'annee precedente. Les *places consommees* proratisent chaque enfant selon la part de son cycle tombant dans l'annee — un enfant entre en novembre n'en pese que 0,15 — et disent ce qui a ete reellement delivre. Les *enfants touches* comptent tout enfant accompagne au moins un jour : toujours les plus nombreux.
+
+      **Ne jamais sommer les annees** sur la portee ni sur les places : un enfant a cheval sur deux annees est compte dans les deux par la portee, et partage entre elles par le quota. Seules les entrees se somment sans double comptage — c'est d'ailleurs pourquoi l'historique en bas de page les porte.
+
+      **Un quota vendu vide n'est pas un zero.** Les projets sans engagement — bouche-a-oreille, reinscriptions directes, sources de test — n'ont pas de ligne dans la feuille du bureau. Leurs pourcentages d'atteinte sont vides et non nuls : un retard la ou il n'y a pas d'objectif n'existe pas.
+
+      **Aucun taux d'atteinte n'est affiche, c'est voulu.** Les deux nombres sont cote a cote et chacun tire sa conclusion : un pourcentage transformerait un constat en jugement, sans dire si le retard est rattrapable. La vue `analytics.engagements_par_projet` porte `pct_entrees` et `ecart_points` si le besoin revient.

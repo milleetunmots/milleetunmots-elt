@@ -66,7 +66,12 @@ pas :
 
 **Les filtres catégoriels sont des *field filters*.** Metabase va chercher les
 valeurs en direct dans la colonne — aucune liste en dur à maintenir, aucune
-valeur qui périme. En contrepartie, deux contraintes :
+valeur qui périme. En contrepartie, trois contraintes :
+
+- la table doit être **synchronisée dans le modèle de données Metabase**, sans
+  quoi le champ n'a pas d'identifiant et l'outil s'arrête. Lire un schéma en SQL
+  natif ne suffit pas : `ANALYTICS` était interrogeable plusieurs heures avant
+  d'être filtrable. `POST /api/database/3/sync_schema` déclenche la synchro ;
 
 - la table filtrée doit être **non aliasée** dans le SQL de la carte, sinon la
   clause générée ne résout pas ;
@@ -105,6 +110,7 @@ clause que Metabase générerait.
 |---|---|---|---|
 | `accompagnantes.yml` | `Claude/Accompagnantes` | [119](https://metabase.1001mots.org/dashboard/119) | Les accompagnantes : le programme, et chacune face au collectif |
 | `fidelity.yml` | `Claude/Suivi Fidelity` | [118](https://metabase.1001mots.org/dashboard/118) | Suivi des engagements du contrat Fidelity |
+| `suivi_projet.yml` | `Claude/Suivi de projet` | [120](https://metabase.1001mots.org/dashboard/120) | Où en est chaque financeur de ce qu'il a contractualisé |
 
 Les deux sont en spec : un renommage de colonne dans dbt se rattrape maintenant
 en relançant l'apply, au lieu de casser une carte sans prévenir — ce qui était
