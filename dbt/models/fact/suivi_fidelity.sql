@@ -10,6 +10,29 @@
 --   KPI_1       44,4 % en 2024 (grille : 44)
 --   KPI_2       66,2 % en 2024 (grille : 66)
 --
+-- QUELLE METRIQUE MAISON LE KPI_GLOBAL REPREND : la [OLD], pas la [NEW]. Les
+-- deux vivent dans la collection « Dashboards Certifies » de Metabase sous le
+-- nom « Nouvelles habitudes - % familles avec au moins une petite mission
+-- definie », partagent exactement le meme numerateur (has_set_goals, le case
+-- sur les quatre is_callN_goals) et ne different que par le denominateur :
+--
+--   [OLD]  aucun filtre : tous les enfants de la cohorte.
+--          54,4 / 60,3 / 60,9 pour 2024, 2025, 2026. C'est ce modele.
+--   [NEW]  filtre is_call_0_1_status_ok : les seuls enfants joints a l'appel 0
+--          ou a l'appel 1.  69,2 / 74,8 / 73,1.
+--
+-- Le contrat Fidelity a ete depose avec la [OLD] : c'est elle, et elle seule,
+-- qui redonne la baseline 54 de la grille. Basculer sur la [NEW] ferait passer
+-- toutes les annees au-dessus de leur cible -- 2026 a 73 pour une cible de 66 --
+-- sans qu'aucun enfant de plus ait recu de mission. Ce serait un changement de
+-- denominateur presente comme un progres.
+--
+-- La [NEW] n'est pas fausse pour autant : rapporter les missions aux seuls
+-- enfants qu'on a joints mesure la pratique des accompagnantes plutot que la
+-- couverture du programme. C'est une bonne mesure interne, ce n'est pas celle
+-- du contrat. Si elle doit le devenir, le dire a Fidelity et recalculer toutes
+-- les annees -- jamais la seule annee courante.
+--
 -- CE QUE KPI_1 MESURE VRAIMENT, et il faut le dire en seance : le champ
 -- nb_of_tries_call0 n'est renseigne que lorsque l'appel a abouti -- 99,2 % des
 -- appels OK de 2026 le portent, 17 % des autres statuts, 0 % des enfants sans
@@ -98,7 +121,7 @@ mesures as (
         'Parents ayant adopté une nouvelle habitude'                as indicateur_libelle,
         'Parents who adopted a new habit in interactions with their children (%)'
                                                                     as indicateur_libelle_fidelity,
-        'Enfants à qui une petite mission a été posée au moins une fois sur l''accompagnement, rapportés à tous les enfants de la cohorte — cohortes au cycle achevé uniquement'
+        'Enfants à qui une petite mission a été posée au moins une fois, rapportés à TOUS les enfants de la cohorte (métrique maison [OLD]) — cohortes au cycle achevé uniquement. La métrique [NEW], qui ne retient que les enfants joints, donne 69,2 % en 2024 contre 54 à la grille.'
                                                                     as indicateur_definition,
         -- La petite mission EST l'habitude nouvelle : elle est co-construite
         -- avec le parent sur une pratique concrete du quotidien. Le KPI compte

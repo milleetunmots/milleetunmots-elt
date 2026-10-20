@@ -59,6 +59,13 @@ models:
           La mesure, en pourcentage à une décimale. null quand l'année n'a aucune
           enfant mesurable — une absence de mesure n'est pas un échec, d'où le
           null plutôt que zéro.
+          Le KPI global reprend la métrique maison **[OLD]** « Nouvelles
+          habitudes » : numérateur has_set_goals, dénominateur sans filtre. La
+          métrique **[NEW]** a le même numérateur mais restreint le dénominateur
+          aux enfants joints à l'appel 0 ou 1, et donne 69,2 / 74,8 / 73,1 là où
+          celle-ci donne 54,4 / 60,3 / 60,9. Seule la [OLD] redonne la baseline
+          54 de la grille déposée ; la [NEW] est une bonne mesure interne de la
+          pratique, pas celle du contrat.
           La hausse du KPI global de 2024 à 2025 (54,4 → 60,3) tient à une
           généralisation réelle de la pratique : parmi les enfants dont
           l'appel 0 a abouti, la pose d'une mission passe de 85,7 à 92,7 %. Ce

@@ -237,6 +237,8 @@ cards:
     size_y: 6
     text: |
       ## Comment lire ces chiffres
+      **Le KPI global reprend la métrique maison [OLD], pas la [NEW].** Les deux partagent le même numérateur — au moins une petite mission posée — et ne diffèrent que par le dénominateur : la [OLD] rapporte à tous les enfants de la cohorte, la [NEW] aux seuls enfants joints à l'appel 0 ou 1. La grille Fidelity a été déposée avec la [OLD], qui donne 54,4 % en 2024 contre 54 au contrat ; la [NEW] donnerait 69,2 %. Basculer ferait passer toutes les années au-dessus de leur cible sans qu'un enfant de plus ait reçu de mission.
+
       **Le KPI global compte la pose de la mission, pas sa réussite.** La petite mission *est* l'habitude nouvelle, co-construite avec le parent sur une pratique du quotidien. Dénominateur : l'effectif entier de la cohorte — une famille jamais jointe n'en a pas reçu, et c'est un résultat, pas une donnée manquante.
       
       **Il ne lit que les cohortes au cycle achevé.** Une mission peut être posée à n'importe lequel des quatre appels : une cohorte qui vient de passer son appel 0 a un taux pas encore né, pas un mauvais taux. Sur 2026, 50 % toutes cohortes confondues contre 61 % sur les seules achevées.
