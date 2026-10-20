@@ -1,0 +1,213 @@
+version: 2
+
+models:
+  - name: suivi_fidelity
+    description: >
+      Suivi des trois indicateurs du projet Fidelity : une ligne par année de
+      cohorte et par indicateur, la valeur mesurée face à la cible contractuelle.
+      Les définitions retenues sont celles du métier, et elles redonnent la
+      baseline 2024 de la grille déposée (54 / 44 / 66) : la correspondance sert
+      de contrôle, pas de preuve. Elle ne suffit d'ailleurs pas à trancher seule
+      — sur le KPI global, « mission posée » et « mission déclarée réussie »
+      tombent toutes deux sur 54 % en 2024 et ne divergent qu'ensuite. C'est
+      « mission posée » qui est la bonne lecture : la petite mission est
+      l'habitude nouvelle, co-construite avec le parent sur une pratique
+      concrète du quotidien, et le KPI s'arrête à sa pose.
+      Toute définition qui bouge casse cette comparabilité — le dire au
+      financeur et recalculer toutes les années, jamais la seule année courante.
+      Maille enfant : un engagement financeur se contractualise en nombre
+      d'enfants à accompagner. La grille dit « parents » et « families », mais
+      c'est le vocabulaire du contrat, pas sa maille de comptage.
+      L'année est celle du démarrage de la cohorte, pas celle de l'inscription
+      ni de l'appel. Le KPI global ne compte que les cohortes au cycle achevé —
+      une petite mission se déclare à l'appel suivant, une cohorte en cours a un
+      taux pas encore né et non un mauvais taux. L'année en cours ne porte donc
+      ce KPI que sur une partie de ses cohortes : pct_cycle_acheve dit laquelle,
+      et il faut le montrer à côté du chiffre.
+      Périmètre : tout le programme, et non un sous-ensemble financé par
+      Fidelity — c'est ce que confirme la correspondance des trois baselines.
+    columns:
+      - name: annee
+        description: >
+          Année de démarrage de la cohorte (date_call0_start du groupe). Une
+          cohorte lancée en décembre 2026 est une cohorte 2026 même si ses
+          appels 2 et 3 tombent en 2027.
+        tests:
+          - not_null
+      - name: indicateur_code
+        description: >
+          'KPI_GLOBAL', 'KPI_1' ou 'KPI_2'. Clé stable, à préférer au libellé
+          pour filtrer.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['KPI_GLOBAL', 'KPI_1', 'KPI_2']
+      - name: indicateur_ordre
+        description: Ordre d'affichage de la grille Fidelity — global, puis 1, puis 2.
+      - name: indicateur_libelle
+        description: Libellé français, celui qu'on présente en interne.
+      - name: indicateur_libelle_fidelity
+        description: >
+          Libellé anglais exact de la grille contractuelle. C'est celui à
+          reprendre dans le reporting envoyé au financeur.
+      - name: indicateur_definition
+        description: >
+          Numérateur et dénominateur en une phrase. À afficher à côté du chiffre :
+          la grille ne porte pas les définitions, elles ne se devinent pas.
+      - name: valeur_pct
+        description: >
+          La mesure, en pourcentage à une décimale. null quand l'année n'a aucune
+          enfant mesurable — une absence de mesure n'est pas un échec, d'où le
+          null plutôt que zéro.
+          La hausse du KPI global de 2024 à 2025 (54,4 → 60,3) tient à une
+          généralisation réelle de la pratique : parmi les enfants dont
+          l'appel 0 a abouti, la pose d'une mission passe de 85,7 à 92,7 %. Ce
+          n'est pas un effet de saisie — contrairement au taux de missions
+          *réussies*, qui lui est pollué par le remplissage du suivi (skill
+          analyse-cohorte, section 9 bis) et qui n'entre pas dans ce KPI.
+      - name: cible_pct
+        description: >
+          Cible contractuelle de l'année. null hors période du contrat
+          (2023 et avant) : l'écart est alors null lui aussi.
+          2024 est la baseline et non une cible — l'écart y vaut zéro par
+          construction, ce qui sert de contrôle de non-régression du modèle.
+      - name: ecart_points
+        description: >
+          valeur_pct - cible_pct, en points. Négatif = sous la cible. La colonne
+          à trier pour savoir quel indicateur décroche.
+      - name: is_cible_atteinte
+        description: >
+          Vrai quand la valeur atteint ou dépasse la cible. null hors contrat.
+          À lire avec is_annee_partielle : une année en cours peut être sous sa
+          cible sans que ce soit acquis.
+      - name: numerateur
+        description: Enfants comptés au numérateur de l'indicateur.
+      - name: denominateur
+        description: >
+          Enfants sur lesquels l'indicateur est mesuré. À regarder avant la
+          valeur : 594 enfants pour KPI_1 en 2024, le champ « tentative »
+          n'existant dans l'application que depuis octobre 2024 — la baseline ne
+          porte donc que sur le quatrième trimestre, 10 % de la cohorte, avec un
+          intervalle de confiance de ± 4 points. Vérifié : ce trimestre
+          ressemble au reste de l'année, ses trois mois s'accordent, et la
+          composition du dénominateur ne dérive pas d'une année sur l'autre.
+          Conséquence : la baisse de 44,4 à 42,9 en 2025 est dans le bruit, le
+          retard sur la cible 55 ne l'est pas.
+          Pour KPI_GLOBAL c'est l'effectif entier de la cohorte, enfants dont la
+          famille n'a jamais été jointe compris — ne pas en avoir reçu est un
+          résultat, pas une donnée manquante — mais limité aux cohortes
+          achevées, d'où un dénominateur bien plus petit sur l'année en cours
+          (2 088 en 2026 contre 6 098 en 2025).
+      - name: nb_enfants_cohorte
+        description: >
+          Tous les enfants de l'année, mesurables ou non. Identique pour les
+          trois indicateurs d'une même année.
+      - name: taux_couverture_mesure
+        description: >
+          denominateur / nb_enfants_cohorte, en pourcentage. Bas, il signale que
+          le taux repose sur une poignée d'enfants et ne se compare pas aux
+          autres années — 10 % pour KPI_1 en 2024.
+      - name: pct_cycle_acheve
+        description: >
+          Part des enfants de l'année dont le cycle de quatre appels est
+          terminé. Identique pour les trois indicateurs d'une même année.
+      - name: is_annee_partielle
+        description: >
+          Vrai tant que toutes les cohortes de l'année n'ont pas fini leur cycle.
+          Le KPI global n'y est pas sous-estimé — il exclut les cohortes en
+          cours — mais il ne porte alors que sur une partie de l'année, et sur
+          ses cohortes les plus anciennes : en octobre 2026 il ne lit que les
+          cohortes de janvier à avril, celles d'avant le déploiement du RDV. La
+          valeur bougera donc encore à mesure que les suivantes se clôturent.
+          Ne jamais présenter une année partielle comme un résultat acquis.
+      - name: is_baseline
+        description: >
+          Vrai sur 2024, année de référence du contrat. Cette année-là, la cible
+          est la mesure elle-même : l'écart vaut zéro par construction et sert
+          de contrôle de non-régression, il ne dit rien d'une performance.
+
+  - name: suivi_fidelity_enfant
+    description: >
+      Détail du suivi Fidelity : une ligne par enfant et par cohorte, portant
+      les flags de numérateur et de dénominateur des trois indicateurs du
+      contrat, plus les deux étapes du dispositif de prise de RDV.
+      Brique commune de suivi_fidelity (la grille annuelle) et de
+      kpi_fidelity_cohorte (la dynamique) : les deux lisent les mêmes flags,
+      de sorte qu'une définition ne puisse pas dériver entre la grille et le
+      graphique qu'on montre à côté.
+      Maille enfant, comme suivi_engagements_enfant et comme tout le reporting
+      financeur de ce dépôt : un engagement se contractualise en nombre
+      d'enfants, une fratrie de deux compte donc pour deux. super_table est déjà
+      à cette maille, il n'y a aucune agrégation ici.
+      Tout taux se calcule en sum(numérateur) / sum(dénominateur) — un ratio de
+      sommes, jamais une moyenne de taux : les cohortes vont de 15 à 560
+      enfants.
+    columns:
+      - name: child_id
+        description: Identifiant de l'enfant. Clé du modèle.
+        tests:
+          - not_null
+          - unique
+      - name: family_id
+        description: >
+          Famille de l'enfant. Une fratrie partage ses appels et sa mission :
+          agréger dessus change la maille et donc les taux.
+      - name: cohort_name
+        description: >
+          Cohorte d'accompagnement, au format `YYYY/MM/DD - Libellé`. Un enfant
+          réinscrit apparaît sur deux cohortes : ne pas sommer les cohortes sans
+          `count(distinct child_id)`.
+        tests:
+          - not_null
+      - name: annee
+        description: Année de démarrage de la cohorte, dérivée de date_call0_start.
+      - name: is_call0_termine
+        description: >
+          Vrai quand la fenêtre d'appel 0 de la cohorte est close. À filtrer
+          avant toute lecture de KPI_1 ou KPI_2 : les cohortes à venir sortent
+          sinon à 0 % et font plonger la courbe.
+      - name: is_cycle_acheve
+        description: >
+          Vrai quand les quatre appels sont passés. Condition de lecture du
+          KPI global : les petites missions se déclarent à l'appel suivant, une
+          cohorte récente l'affiche donc proche de zéro.
+      - name: a_recu_une_pm
+        description: >
+          Une petite mission a été posée au moins une fois sur l'accompagnement,
+          à n'importe lequel des quatre appels. C'est le **numérateur du KPI
+          global** ; son dénominateur est l'effectif entier de la cohorte, soit
+          `count(*)`.
+      - name: a_declare_une_pm_reussie
+        description: >
+          Au moins une mission déclarée réussie à l'appel suivant.
+          **N'entre dans aucun KPI du contrat** : le KPI global s'arrête à la
+          pose de la mission. Colonne de diagnostic, à manier avec deux
+          précautions. D'abord elle n'est **pas emboîtée** dans a_recu_une_pm —
+          le suivi et la pose sont deux champs indépendants, une centaine
+          d'enfants de 2024 ont un suivi sans mission envoyée — donc écrire
+          `sum(a_recu_une_pm * a_declare_une_pm_reussie)` pour un taux qui soit
+          une part de son assiette. Ensuite sa trajectoire est polluée par la
+          saisie du suivi, passée de 74 à 90 % entre 2024 et 2025 : elle ne se
+          compare pas d'une année sur l'autre avant 2025.
+      - name: tentative_renseignee
+        description: >
+          Dénominateur du KPI 1. En pratique ≈ les enfants joints : le champ
+          est renseigné sur 99,2 % des appels OK et 17 % des autres statuts.
+      - name: jointe_des_la_1ere
+        description: Numérateur du KPI 1 — appel 0 abouti dès la première tentative.
+      - name: call0_joignable
+        description: >
+          Dénominateur du KPI 2 — statut d'appel 0 renseigné, hors « Numéro
+          erroné » et « Ne pas appeler ».
+      - name: call0_ok
+        description: Numérateur du KPI 2 — appel 0 au statut OK, script couvert en entier.
+      - name: rdv_propose
+        description: >
+          Le lien Calendly a été envoyé à la famille de l'enfant. C'est une pratique
+          d'accompagnante, en tout ou rien au sein d'une cohorte — le levier
+          actionnable du dispositif.
+      - name: rdv_pris
+        description: >
+          Un créneau a été posé, annulations incluses. 1,8 % des RDV n'ont pas
+          de proposition détectée (l'utm du SMS en rate quelques-uns) : rdv_pris
+          n'est donc pas strictement inclus dans rdv_propose.

@@ -109,3 +109,127 @@ models:
           Somme contrôlée par test_engagements_par_millesime_coherence : par
           projet et par année, elle doit retomber exactement sur
           nb_enfants_suivis du suivi par projet.
+
+  - name: kpi_fidelity
+    description: >
+      Vue d'exploitation du suivi Fidelity : une ligne par année et par
+      indicateur, colonnes ordonnées de la synthèse vers le détail et nommées
+      pour être lues sans documentation. Pivoter indicateur en lignes et annee
+      en colonnes redonne exactement la grille déposée chez Fidelity, valeurs
+      mesurées à la place des cibles.
+      Simple renommage et réordonnancement de fact.suivi_fidelity, où vivent les
+      règles de calcul : c'est là qu'il faut aller pour comprendre un chiffre, et
+      là qu'il faut corriger. Aucune année n'est filtrée.
+    columns:
+      - name: annee
+        description: Année de démarrage de la cohorte. Filtrer dessus, toutes les années sont là.
+      - name: indicateur
+        description: >
+          Libellé français de l'indicateur. Pour filtrer de façon stable,
+          préférer indicateur_code, qui ne bougera pas.
+      - name: valeur
+        description: >
+          La mesure de l'année, en pourcentage. À ne jamais lire sans statut :
+          une valeur sous la cible sur une année en cours n'est pas un retard
+          constaté.
+          Le KPI global compte la part des enfants à qui une petite mission a
+          été posée — la mission est l'habitude nouvelle, et le KPI s'arrête à sa
+          pose. Il ne lit que les cohortes au cycle achevé, sans quoi il
+          s'effondre : 50,0 % en 2026 toutes cohortes confondues contre 60,9 %
+          sur les seules achevées. Le détail est dans fact.suivi_fidelity.
+      - name: cible
+        description: >
+          Cible contractuelle. Vide avant 2024 : ces années précèdent le contrat
+          et ne servent que de comparaison.
+      - name: ecart_points
+        description: >
+          valeur - cible, en points. Négatif = sous la cible. La colonne à trier
+          pour savoir quel indicateur décroche.
+      - name: statut
+        description: >
+          Le verdict en un mot : « Cible atteinte », « En retard », « En retard,
+          annee en cours » quand le cycle des cohortes n'est pas clos, « Hors
+          contrat » avant 2024.
+      - name: annee_en_cours
+        description: >
+          Vrai tant que les cohortes de l'année n'ont pas fini leur cycle. La
+          valeur remontera encore : ne pas la présenter comme acquise.
+      - name: pct_enfants_cycle_termine
+        description: >
+          Part des enfants de l'année dont les quatre appels sont passés. Dit
+          de combien l'année est encore susceptible de bouger.
+      - name: enfants_mesures
+        description: >
+          Le dénominateur. À regarder avant la valeur : un taux calculé sur 585
+          enfants ne se compare pas à un taux calculé sur 5 000.
+      - name: pct_cohorte_mesuree
+        description: >
+          Part de la cohorte sur laquelle l'indicateur est réellement mesuré.
+          10 % pour le KPI 1 en 2024 — le champ « tentative » n'existe dans
+          l'application que depuis octobre 2024, la baseline ne porte que sur le
+          quatrième trimestre.
+      - name: definition
+        description: >
+          Numérateur et dénominateur en une phrase. À afficher à côté du chiffre
+          en séance : la grille Fidelity ne porte pas les définitions.
+      - name: libelle_contractuel
+        description: Libellé anglais exact de la grille, à reprendre dans le reporting envoyé.
+
+  - name: kpi_fidelity_cohorte
+    description: >
+      La dynamique du suivi Fidelity : une ligne par cohorte, les trois
+      indicateurs du contrat en colonnes, plus l'entonnoir du dispositif de
+      prise de RDV. C'est la vue à mettre sous la grille annuelle — l'année ne
+      donne que trois points et lisse tout ce qui bouge.
+      Le dispositif se lit en deux leviers et non un : la proposition est une
+      pratique d'accompagnante, la transformation est la décision de la famille.
+      Ne jamais comparer le KPI 2 des familles « avec RDV » à celui des familles
+      « sans RDV » : l'écart brut n'est pas l'effet du dispositif, et le groupe
+      sans RDV devient un résidu négativement sélectionné à mesure que
+      l'adoption monte. L'effet réel est d'environ +7 points (skill
+      analyse-cohorte, section 9).
+    columns:
+      - name: cohorte
+        description: Cohorte d'accompagnement, au format `YYYY/MM/DD - Libellé`.
+      - name: date_debut_appels
+        description: Début de la fenêtre d'appel 0. C'est l'axe du temps des graphiques.
+      - name: enfants
+        description: Familles de la cohorte, toutes mesurables ou non.
+      - name: kpi_global_nouvelle_habitude
+        description: >
+          Part des enfants à qui une petite mission a été posée au moins une
+          fois, sur l'effectif entier de la cohorte.
+          Vide tant que le cycle n'est pas clos, et c'est délibéré : une mission
+          peut être posée à n'importe lequel des quatre appels, une cohorte qui
+          vient de passer son appel 0 afficherait une valeur pas encore née.
+          Suivre enfants_avec_une_pm pour le remplissage en cours.
+      - name: kpi1_jointe_1ere_tentative
+        description: >
+          Part des enfants joints qui l'ont été dès la première tentative.
+          L'indicateur qui porte la trace du dispositif RDV : 41 % sur les
+          cohortes de janvier 2026, 56-58 % depuis l'été.
+      - name: kpi2_appel0_complet
+        description: >
+          Part des enfants joignables dont l'appel 0 a été mené en entier.
+          Plat entre 64 et 70 % sur toute l'année 2026, montée du dispositif
+          comprise.
+      - name: pct_rdv_propose
+        description: >
+          Part des enfants dont la famille a reçu le lien Calendly. Pratique
+          d'accompagnante, en tout ou rien : le levier actionnable.
+      - name: pct_transformation
+        description: >
+          Part des enfants sollicités dont la famille a posé un créneau. La décision de
+          la famille. 30-40 % au printemps 2026, 43-52 % depuis l'été.
+      - name: pct_rdv_pris
+        description: Le résultat des deux leviers. 0 % en janvier 2026, 42-45 % à l'automne.
+      - name: rdv_sans_proposition
+        description: >
+          RDV posés sans proposition détectée — l'utm du SMS en rate quelques-uns.
+          Explique l'écart entre pct_rdv_pris et le produit des deux autres taux.
+      - name: appels_0_termines
+        description: >
+          Faux tant que la fenêtre d'appel 0 n'est pas close. Filtrer dessus
+          avant de tracer KPI 1 ou KPI 2.
+      - name: cycle_termine
+        description: Vrai quand les quatre appels sont passés. Conditionne le KPI global.

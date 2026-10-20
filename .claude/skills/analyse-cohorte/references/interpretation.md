@@ -293,6 +293,45 @@ Ne pas suivre le taux « hors RDV ».
 
 ---
 
+## 9 bis. La saisie du suivi de mission, et pourquoi 2025 n'est pas comparable à 2024
+
+Établi le 2026-10-20, en construisant le suivi des indicateurs Fidelity.
+
+**Toute comparaison du taux de missions réussies entre 2024 et 2025 est faussée
+par la saisie.** Pour une petite mission posée dont l'appel suivant a abouti, le
+suivi (`callN_previous_goals_follow_up`) est renseigné dans :
+
+| Année de cohorte | Suivi saisi | Réussie si saisi | PM comptée comme réussie |
+|---|---|---|---|
+| 2023 | 57,6 % | 70,2 % | 25,9 % |
+| 2024 | 74,2 % | 73,7 % | 36,4 % |
+| 2025 | **89,9 %** | 81,1 % | 49,8 % |
+| 2026 | 90,4 % | 82,1 % | — (cycles en cours) |
+
+Une mission dont le suivi n'est jamais saisi ne peut pas compter comme réussie :
+elle est indiscernable d'un échec. En isolant les trois facteurs, les
+**+13,4 points** de probabilité qu'une mission compte entre 2024 et 2025 se
+répartissent en **+7,7 points de saisie**, +3,7 points de réussite déclarée et
++1,0 point d'appels suivants aboutis.
+
+Deux conséquences pratiques :
+
+1. **Ne pas lire une hausse du taux de missions entre 2023, 2024 et 2025 comme
+   une hausse de performance.** Elle mesure d'abord le remplissage du champ. À
+   partir de 2025 la saisie plafonne à 90 % et la comparaison redevient propre.
+2. **Un taux de missions agrégé sur une cohorte en cours est sous-estimé**, la
+   mission se déclarant à l'appel suivant. Toute lecture annuelle doit se
+   restreindre aux cohortes dont le cycle est achevé.
+
+À noter : le KPI global du contrat Fidelity **ne mesure pas** la réussite des
+missions, mais leur **pose** (`is_callN_goals`), qui n'est pas affectée par ce
+biais — la pose de mission parmi les appels 0 aboutis passe de 85,7 % en 2024 à
+92,7 % en 2025, et c'est une vraie généralisation de la pratique. Le piège
+décrit ici ne concerne donc que les analyses de réussite des missions, pas le
+suivi du financeur. Voir `fact.suivi_fidelity` pour les définitions du contrat.
+
+---
+
 ## 10. Les accompagnantes
 
 Vient en **dernier**, pas en premier. `03_contributions_accompagnantes.sql` tranche :
