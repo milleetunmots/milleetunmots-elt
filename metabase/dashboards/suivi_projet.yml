@@ -214,26 +214,49 @@ cards:
         [[and {{financeur}}]]
       order by quota_vendu desc
 
-  - name: Projet · Entrees en cohorte contre quota vendu
+  - name: Projet · Ce qui remplit le quota — entrees et reports
     tab: Par financeur
-    display: bar
+    display: combo
     row: 13
     col: 0
     size_x: 24
     size_y: 7
     filters: [financeur]
     description: >
-      Les douze plus gros engagements de l'annee, enfants entres en cohorte face
-      au quota vendu. L'espace entre les deux barres est ce qu'il reste a
-      recruter.
+      Les douze plus gros engagements de l'annee. La barre empilee montre les
+      enfants dont une cohorte tourne dans l'annee, separes en deux : ceux
+      ENTRES cette annee, et ceux REPORTES de l'annee precedente. Le quota vendu
+      est pose par-dessus en repere.
+      Seule la part « entres cette annee » se compare au quota : un report a
+      deja ete compte l'annee de son arrivee. La hauteur totale de la pile dit
+      la charge reelle portee par les accompagnantes, qui est une autre
+      question.
+      Le quota est trace en ligne pointillee et non en barre : Metabase empile
+      tout ou rien sur un graphique en barres, une troisieme barre viendrait
+      s'ajouter a la pile au lieu de se poser a cote.
     visualization:
       graph.dimensions: [Financeur]
-      graph.metrics: [Quota vendu, Enfants entres en cohorte]
+      graph.metrics: [Entres cette annee, Reportes de l'an passe, Quota vendu]
+      stackable.stack_type: stacked
+      graph.y_axis.title_text: enfants
+      series_settings:
+        Entres cette annee:
+          display: bar
+          color: "#88BF4D"
+        Reportes de l'an passe:
+          display: bar
+          color: "#F2A86F"
+        Quota vendu:
+          display: line
+          color: "#509EE3"
+          line.style: dotted
+          line.marker_enabled: true
     sql: |
       select
           projet                      as "Financeur",
-          quota_vendu                 as "Quota vendu",
-          enfants_entres_dans_annee   as "Enfants entres en cohorte"
+          enfants_entres_dans_annee   as "Entres cette annee",
+          enfants_venus_de_n_moins_1  as "Reportes de l'an passe",
+          quota_vendu                 as "Quota vendu"
       from analytics.engagements_par_projet
       where annee = (select max(annee) from analytics.engagements_par_projet
                      where quota_vendu is not null)
