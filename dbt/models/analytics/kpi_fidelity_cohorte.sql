@@ -90,9 +90,23 @@ select
     -- 3 ne sont declarees qu'a la fin. Une cohorte recente le sous-estime.
     booland_agg(is_cycle_acheve)                                           as cycle_termine,
 
+    -- NUMERATEURS ET DENOMINATEURS BRUTS. Ils sont ici pour qu'un consommateur
+    -- puisse REPOOLER a une autre maille que la cohorte -- par mois, par
+    -- trimestre, ou simplement par date de demarrage quand deux cohortes
+    -- partagent la meme. Un taux ne s'additionne jamais : il faut sommer les
+    -- numerateurs et les denominateurs, puis diviser.
+    -- Le cas s'est produit : « 2025/03/24 - Mars25-B » et
+    -- « 2025/03/24 - Mars25-B-souscription » demarrent le meme jour, et un
+    -- graphique ayant la date en dimension affichait 154 % -- la somme de 73,7
+    -- et 80,3.
     sum(a_recu_une_pm)                                                  as enfants_avec_une_pm,
     sum(tentative_renseignee)                                           as enfants_joints,
-    sum(call0_joignable)                                                as enfants_joignables
+    sum(jointe_des_la_1ere)                                             as enfants_joints_1ere_tentative,
+    sum(call0_joignable)                                                as enfants_joignables,
+    sum(call0_ok)                                                       as enfants_call0_ok,
+    sum(rdv_propose)                                                    as enfants_rdv_propose,
+    sum(rdv_propose * rdv_pris)                                         as enfants_rdv_propose_et_pris,
+    sum(rdv_pris)                                                       as enfants_rdv_pris
 
 from enfants
 group by cohort_name, annee, date_call0_start

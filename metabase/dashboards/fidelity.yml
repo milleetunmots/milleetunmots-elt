@@ -201,7 +201,7 @@ cards:
         ],
         "graph.metrics": [
           "KPI 2 — appel 0 complet",
-          "KPI 1 — jointe du premier coup",
+          "KPI 1 — joint du premier coup",
           "Enfants ayant pris un RDV"
         ],
         "graph.x_axis.title_text": "Début des appels de la cohorte",
@@ -211,14 +211,21 @@ cards:
         "graph.y_axis.max": 100
       }
     sql: |
+      -- Agregation par DATE et non par cohorte : deux cohortes peuvent demarrer
+      -- le meme jour (« Mars25-B » et « Mars25-B-souscription » le 2025-03-24),
+      -- et Metabase sommerait alors leurs pourcentages -- 154 % affiches.
+      -- On repoole donc en ratio de sommes, ce que permettent les numerateurs
+      -- exposes par la vue. Un taux ne s'additionne jamais.
       select
-          date_debut_appels               as "Début des appels",
-          cohorte                         as "Cohorte",
-          kpi2_appel0_complet             as "KPI 2 — appel 0 complet",
-          kpi1_jointe_1ere_tentative      as "KPI 1 — jointe du premier coup",
-          pct_rdv_pris                    as "Enfants ayant pris un RDV"
+          date_debut_appels                                                       as "Début des appels",
+          round(100.0 * sum(enfants_call0_ok) / nullif(sum(enfants_joignables), 0), 1)
+                                                                                  as "KPI 2 — appel 0 complet",
+          round(100.0 * sum(enfants_joints_1ere_tentative) / nullif(sum(enfants_joints), 0), 1)
+                                                                                  as "KPI 1 — joint du premier coup",
+          round(100.0 * sum(enfants_rdv_pris) / nullif(sum(enfants), 0), 1)        as "Enfants ayant pris un RDV"
       from analytics.kpi_fidelity_cohorte
       where annee in (2025, 2026) and appels_0_termines
+      group by 1
       order by 1
 
   - name: Fidelity · Adoption de la prise de RDV
@@ -249,14 +256,18 @@ cards:
         "graph.y_axis.max": 100
       }
     sql: |
+      -- Repoolage par date, meme raison que la carte precedente : deux cohortes
+      -- peuvent partager une date de demarrage, et sommer des taux n'a pas de
+      -- sens.
       select
-          date_debut_appels               as "Début des appels",
-          cohorte                         as "Cohorte",
-          pct_rdv_propose                 as "RDV proposé",
-          pct_transformation              as "Transformation",
-          pct_rdv_pris                    as "RDV pris"
+          date_debut_appels                                                           as "Début des appels",
+          round(100.0 * sum(enfants_rdv_propose) / nullif(sum(enfants), 0), 1)        as "RDV proposé",
+          round(100.0 * sum(enfants_rdv_propose_et_pris) / nullif(sum(enfants_rdv_propose), 0), 1)
+                                                                                      as "Transformation",
+          round(100.0 * sum(enfants_rdv_pris) / nullif(sum(enfants), 0), 1)           as "RDV pris"
       from analytics.kpi_fidelity_cohorte
       where annee = 2026 and appels_0_termines
+      group by 1
       order by 1
 
   - name: Notes de lecture

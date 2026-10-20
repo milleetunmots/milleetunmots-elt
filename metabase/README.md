@@ -97,6 +97,19 @@ onglets omet simplement `tabs:` et `tab:` — voir `fidelity.yml`.
 jamais dans la collection. C'est là qu'on met les mises en garde de lecture,
 pour qu'elles voyagent avec le dashboard et pas seulement dans une conversation.
 
+**Un taux ne s'additionne jamais, et Metabase l'additionne pourtant.** Si deux
+lignes du résultat partagent la même valeur de dimension, Metabase **somme** les
+séries — un graphique de pourcentages a affiché 154 % parce que deux cohortes
+démarrent le 24 mars 2025. Agréger dans le SQL à la maille exacte de la
+dimension tracée, en ratio de sommes : `sum(numérateur) / sum(dénominateur)`,
+jamais une moyenne de taux. C'est pourquoi `analytics.kpi_fidelity_cohorte`
+expose ses numérateurs bruts à côté de ses taux.
+
+**Vérifier qu'aucune série déclarée ne manque du résultat.** `graph.metrics`
+nomme les colonnes à tracer : renommer un alias SQL sans renommer la série fait
+disparaître la courbe, sans erreur ni message. Le contrôle tient en deux lignes
+— comparer `graph.metrics` aux colonnes rendues — et il a déjà attrapé le cas.
+
 **Une carte retirée de la spec n'est pas supprimée** : elle sort du dashboard
 mais reste dans le dossier, orpheline. L'archiver à la main
 (`PUT /api/card/<id>` avec `archived: true`) — l'outil ne le fait pas, pour ne

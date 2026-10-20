@@ -68,6 +68,19 @@ la moyenne, qui vaut alors toujours la valeur individuelle.
 des sessions, scanner `super_table` UNE fois avec le filtre, puis dépivoter
 depuis cette CTE — sinon seule la première branche de l'union est filtrée.
 
+**Un taux ne s'additionne jamais, et Metabase l'additionne pourtant.** Si deux
+lignes du résultat partagent la même valeur de dimension, Metabase **somme** les
+séries — un graphique de pourcentages a affiché 154 % parce que deux cohortes
+démarrent le 24 mars 2025. Agréger dans le SQL à la maille exacte de la
+dimension tracée, en ratio de sommes : `sum(numérateur) / sum(dénominateur)`,
+jamais une moyenne de taux. C'est pourquoi `analytics.kpi_fidelity_cohorte`
+expose ses numérateurs bruts à côté de ses taux.
+
+**Vérifier qu'aucune série déclarée ne manque du résultat.** `graph.metrics`
+nomme les colonnes à tracer : renommer un alias SQL sans renommer la série fait
+disparaître la courbe, sans erreur ni message. Le contrôle tient en deux lignes
+— comparer `graph.metrics` aux colonnes rendues — et il a déjà attrapé le cas.
+
 **Les vues `analytics.*` sont lisibles ET filtrables depuis le 2026-10-20**
 (grant Snowflake + future grant, puis synchronisation du catalogue Metabase).
 Toujours pointer les questions dessus plutôt que de recopier en SQL une logique

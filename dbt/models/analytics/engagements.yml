@@ -227,6 +227,22 @@ models:
         description: >
           RDV posés sans proposition détectée — l'utm du SMS en rate quelques-uns.
           Explique l'écart entre pct_rdv_pris et le produit des deux autres taux.
+      - name: enfants_joints_1ere_tentative
+        description: Numérateur du KPI 1. Voir enfants_call0_ok pour la raison d'être de ces colonnes.
+      - name: enfants_call0_ok
+        description: >
+          Numérateur du KPI 2. Les numérateurs et dénominateurs bruts sont
+          exposés pour qu'on puisse **repooler** à une autre maille que la
+          cohorte : un taux ne s'additionne jamais, il faut sommer les
+          numérateurs et les dénominateurs puis diviser. Deux cohortes de mars
+          2025 démarrent le même jour, et un graphique ayant la date en
+          dimension affichait 154 % — la somme de deux taux.
+      - name: enfants_rdv_propose
+        description: Numérateur du taux de proposition, et dénominateur de la transformation.
+      - name: enfants_rdv_propose_et_pris
+        description: Numérateur de la transformation.
+      - name: enfants_rdv_pris
+        description: Numérateur du taux de RDV pris.
       - name: appels_0_termines
         description: >
           Faux tant que la fenêtre d'appel 0 n'est pas close. Filtrer dessus
