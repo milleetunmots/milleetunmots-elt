@@ -20,6 +20,18 @@
 -- sommes, jamais une moyenne de taux : agreger des cohortes de 200 et de 550
 -- enfants a poids egal fausserait l'annee.
 --
+-- LES COHORTES EXCLUES DES ANALYSES SONT DEJA HORS DE super_table. Elle les
+-- retire dans sa propre clause where : 28 288 lignes, zero
+-- is_excluded_from_analytics a vrai, et les 914 enfants de cohortes exclues de
+-- 2026 y sont simplement absents. Le filtre pose ci-dessous est donc une
+-- ceinture, pas le mecanisme -- il ne retire rien aujourd'hui, mais rattraperait
+-- le jour ou super_table cesserait de filtrer. Ne pas le lire comme la garantie
+-- de l'exclusion : la garantie est en amont.
+-- A savoir si on lit une autre table : dim.child, fact.child_life_status et
+-- fact.suivi_engagements_enfant, eux, CONTIENNENT les cohortes exclues. Dans
+-- suivi_engagements_enfant le drapeau s'appelle is_cohorte_exclue et il faut le
+-- poser explicitement.
+--
 -- Voir suivi_fidelity pour le choix des definitions et leur calage sur la
 -- baseline 2024 de la grille.
 

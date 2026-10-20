@@ -119,6 +119,14 @@ données réelles :
 Exception : le taux de petites missions a pour dénominateur les appels OK, qui
 ont toujours un statut.
 
+**Les cohortes exclues des analyses sont déjà hors de `fact.super_table`** —
+elle les retire dans sa propre clause `where`, et sa colonne
+`is_excluded_from_analytics` n'y vaut jamais vrai. Un filtre dessus est une
+ceinture utile, pas le mécanisme. En revanche `dim.child`,
+`fact.child_life_status` et `fact.suivi_engagements_enfant` **les contiennent** :
+y lire sans filtrer surcompte. Dans `suivi_engagements_enfant` le drapeau
+s'appelle `is_cohorte_exclue` — 914 enfants sur 2026.
+
 **Exclure les enfants sans accompagnante affectée** (`supporter_name` vide) de
 tout dénominateur qui n'est pas déjà filtré par un statut : ils sont ~600 sur
 une rentrée, tous sans statut, et tirent le collectif vers le bas sans
