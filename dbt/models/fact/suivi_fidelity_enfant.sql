@@ -66,6 +66,12 @@ select
      or st.call3_previous_goals_follow_up = 'PM réussie'
      or st.call4_previous_goals_follow_up = 'PM réussie', 1, 0)     as a_declare_une_pm_reussie,
 
+    -- Denominateur de la metrique maison [NEW] : l'enfant a ete joint a l'appel 0
+    -- OU a l'appel 1. Le flag vient de super_table, ou il est calcule par la
+    -- macro get_is_call_0_1_status_OK -- on le reprend plutot que de reecrire la
+    -- condition, pour que les deux ne puissent pas diverger.
+    coalesce(st.is_call_0_1_status_ok, false)                       as call0_ou_1_ok,
+
     -- KPI_1 : joint des la premiere tentative a l'appel 0.
     iff(nullif(st.nb_of_tries_call0, '') is not null, 1, 0)         as tentative_renseignee,
     iff(st.nb_of_tries_call0 = '1ère tentative', 1, 0)              as jointe_des_la_1ere,

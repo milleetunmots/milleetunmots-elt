@@ -52,14 +52,14 @@ cards:
     size_x: 24
     size_y: 2
     text: |
-      ## Les trois indicateurs du contrat
-      Dernière année mesurée. Les cibles et les écarts sont dans le tableau ci-dessous.
+      ## Les indicateurs, dernière année mesurée
+      Les trois premières tuiles sont celles du contrat Fidelity. La quatrième est la métrique interne [NEW] : même numérateur que la première, mais rapportée aux seuls enfants joints — elle n'est pas au contrat, et l'écart entre les deux n'est pas un progrès. Cibles et écarts dans le tableau ci-dessous.
 
   - name: Fidelity · Nouvelle habitude — dernière année
     display: scalar
     row: 2
     col: 0
-    size_x: 8
+    size_x: 6
     size_y: 4
     description: >
       Part des ENFANTS à qui une petite mission a été posée au moins une fois,
@@ -79,11 +79,33 @@ cards:
       where indicateur_code = 'KPI_GLOBAL' and valeur is not null
       qualify row_number() over (order by annee desc) = 1
 
+  - name: Fidelity · Nouvelle habitude — métrique interne [NEW]
+    display: scalar
+    row: 2
+    col: 6
+    size_x: 6
+    size_y: 4
+    description: >
+      La metrique maison [NEW] : meme numerateur que l'indicateur du contrat --
+      au moins une petite mission posee -- mais denominateur restreint aux seuls
+      enfants joints a l'appel 0 ou 1. Elle mesure la pratique des
+      accompagnantes la ou le contrat mesure la couverture du programme.
+      HORS CONTRAT : la grille Fidelity a ete deposee avec la [OLD], seule a
+      redonner sa baseline de 54. L'ecart entre les deux tuiles n'est pas un
+      progres, c'est un changement de denominateur.
+    visualization:
+      scalar.field: Nouvelle habitude [NEW]
+    sql: |
+      select valeur as "Nouvelle habitude [NEW]"
+      from analytics.kpi_fidelity
+      where indicateur_code = 'KPI_GLOBAL_NEW' and valeur is not null
+      qualify row_number() over (order by annee desc) = 1
+
   - name: Fidelity · Jointe du premier coup — dernière année
     display: scalar
     row: 2
-    col: 8
-    size_x: 8
+    col: 12
+    size_x: 6
     size_y: 4
     description: >
       Appels 0 aboutis dès la 1ère tentative, parmi les ENFANTS joints. Mesure
@@ -103,8 +125,8 @@ cards:
   - name: Fidelity · Appel 0 complet — dernière année
     display: scalar
     row: 2
-    col: 16
-    size_x: 8
+    col: 18
+    size_x: 6
     size_y: 4
     description: >
       Appels 0 menés en entier, parmi les ENFANTS joignables — statut d'appel
@@ -127,8 +149,10 @@ cards:
     size_x: 24
     size_y: 6
     description: >
-      Les trois indicateurs du contrat face à leurs cibles, par année de cohorte,
-      à la maille ENFANT — un engagement financeur se contractualise en nombre
+      Les indicateurs par année de cohorte, à la maille ENFANT. La métrique
+      interne [NEW] y figure en « Hors contrat » : elle n'a pas de cible, et
+      c'est voulu — elle sert à lire la pratique, pas à juger l'engagement.
+      Les trois autres sont ceux du contrat, face à leurs cibles — un engagement financeur se contractualise en nombre
       d'enfants. 2024 est la baseline : l'écart y vaut zéro par construction. La
       colonne Définition porte le numérateur et le dénominateur de chaque
       indicateur. Source : analytics.kpi_fidelity (dbt).

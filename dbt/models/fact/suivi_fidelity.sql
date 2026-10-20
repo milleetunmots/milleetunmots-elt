@@ -163,6 +163,29 @@ mesures as (
 
     union all
 
+    -- La metrique maison [NEW], portee ici pour qu'on puisse la LIRE a cote de
+    -- celle du contrat sans la confondre avec elle : meme numerateur, mais
+    -- denominateur restreint aux enfants joints a l'appel 0 ou 1. Elle n'a pas
+    -- de cible -- elle n'est pas au contrat -- et ressort donc en « Hors
+    -- contrat » dans la vue d'exploitation.
+    -- Le filtre de cycle acheve lui est applique comme a la [OLD], alors que la
+    -- metrique Metabase ne l'a pas : une mission peut etre posee a l'appel 2 ou
+    -- 3, les comparer sur des perimetres differents n'aurait aucun sens.
+    select
+        annee,
+        'KPI_GLOBAL_NEW',
+        4,
+        'Nouvelle habitude — métrique interne [NEW]',
+        'Hors contrat — métrique maison « Nouvelles habitudes » version [NEW]',
+        'Enfants à qui une petite mission a été posée, rapportés aux seuls enfants joints à l''appel 0 ou 1 — cohortes au cycle achevé uniquement. Même numérateur que l''indicateur du contrat, dénominateur restreint : mesure la pratique des accompagnantes là où le contrat mesure la couverture du programme.',
+        sum(iff(call0_ou_1_ok, a_recu_une_pm, 0)),
+        count_if(call0_ou_1_ok)
+    from enfants
+    where is_cycle_acheve
+    group by annee
+
+    union all
+
     select
         annee,
         'KPI_1',

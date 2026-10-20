@@ -36,12 +36,14 @@ models:
           - not_null
       - name: indicateur_code
         description: >
-          'KPI_GLOBAL', 'KPI_1' ou 'KPI_2'. Clé stable, à préférer au libellé
-          pour filtrer.
+          'KPI_GLOBAL', 'KPI_1' ou 'KPI_2' pour les trois indicateurs du contrat ;
+          'KPI_GLOBAL_NEW' pour la métrique maison [NEW], portée ici pour être lue
+          à côté du contrat mais sans cible — elle ressort « Hors contrat ».
+          Clé stable, à préférer au libellé pour filtrer.
         tests:
           - not_null
           - accepted_values:
-              values: ['KPI_GLOBAL', 'KPI_1', 'KPI_2']
+              values: ['KPI_GLOBAL', 'KPI_GLOBAL_NEW', 'KPI_1', 'KPI_2']
       - name: indicateur_ordre
         description: Ordre d'affichage de la grille Fidelity — global, puis 1, puis 2.
       - name: indicateur_libelle
@@ -202,6 +204,11 @@ models:
           est renseigné sur 99,2 % des appels OK et 17 % des autres statuts.
       - name: jointe_des_la_1ere
         description: Numérateur du KPI 1 — appel 0 abouti dès la première tentative.
+      - name: call0_ou_1_ok
+        description: >
+          L'enfant a été joint à l'appel 0 ou à l'appel 1. Dénominateur de la
+          métrique maison [NEW] ; repris de super_table plutôt que réécrit, pour
+          que les deux ne puissent pas diverger.
       - name: call0_joignable
         description: >
           Dénominateur du KPI 2 — statut d'appel 0 renseigné, hors « Numéro
