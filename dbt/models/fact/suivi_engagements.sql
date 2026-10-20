@@ -1,6 +1,6 @@
 -- Suivi des engagements du bureau : une ligne par projet (= financeur) et par
 -- annee de suivi. L'engagement et la projection de la feuille du bureau, face a
--- deux mesures de ce qu'on a reellement fait, qui ne disent pas la meme chose :
+-- quatre mesures de ce qu'on a reellement fait, qui ne disent pas la meme chose :
 --
 --   nb_enfants_suivis    le nombre d'enfants accompagnes au moins un jour dans
 --                        l'annee. Mesure de portee : c'est le nombre d'enfants
@@ -11,11 +11,30 @@
 --                        en novembre vaut 0,15, un enfant desengage au tiers de
 --                        sa cohorte vaut 0,33. C'est elle qui se compare au
 --                        quota vendu.
+--   nb_enfants_en_cohorte  les enfants effectivement en cohorte dans l'annee,
+--                        chacun pour une unite : les reports de l'annee
+--                        precedente plus les entrees de l'annee. C'est la portee
+--                        restreinte a ceux qui ont vraiment integre une cohorte.
 --
--- Les deux se lisent ensemble : 7 900 enfants touches en 2026 pour 3 685 places
--- consommees au 13 octobre, parce qu'un cycle dure 174 jours et chevauche deux
--- annees civiles. Ne jamais presenter l'une pour l'autre, et ne jamais les
+-- Deux conventions cohabitent, et il faut le savoir : le COMPTAGE borne
+-- l'accompagnement sur le statut de l'application, comme mecene, pour que le
+-- bureau retrouve ses chiffres ; le QUOTA le borne sur le cycle des quatre
+-- appels. D'ou nb_reports_sans_place : 1 791 enfants reportes en 2026 dont le
+-- cycle etait clos, qui comptent dans la portee sans consommer de place.
+--   nb_enfants_annee_courante  les entrees de l'annee, comptees une unite
+--                        chacune : une famille qui entre dans le programme est
+--                        une famille accompagnee, qu'elle soit allee au bout de
+--                        son cycle ou non. nb_familles_entrees porte le meme
+--                        compte en familles.
+--
+-- Les quatre se lisent ensemble : 10 078 enfants touches en 2026, dont 3 954
+-- reportes de 2025, 6 020 entres dans l'annee, et 3 779 places consommees. Ne jamais presenter l'une pour l'autre, et ne jamais les
 -- additionner.
+--
+-- Ce qui les distingue est le sort d'un enfant a cheval sur deux annees : la
+-- portee le compte dans les deux, le quota le partage entre elles, les entrees
+-- le comptent une fois, l'annee de son entree. Les entrees sont donc la seule
+-- des trois qui se somme entre annees sans double comptage.
 --
 -- La repartition du quota entre les annees se fait au prorata des jours reels
 -- (voir suivi_engagements_enfant), et non par les paliers 1 / 0,8 / 0,6 de
@@ -44,12 +63,33 @@
 -- Un meme enfant compte sur deux annees consecutives (une fois en « annee
 -- courante », une fois en « annee precedente ») : ne jamais sommer les annees.
 --
+-- Le grain couvre toutes les annees presentes dans le detail, pas seulement
+-- celles que la feuille du bureau renseigne : un financeur a une ligne par annee
+-- ou des enfants lui sont rattaches, avec un quota_vendu nul tant que la feuille
+-- ne porte pas cette annee-la. C'est ce qui permet de comparer 2024, 2025 et
+-- 2026 a perimetre constant, et de poser un engagement par annee le jour ou la
+-- feuille en portera.
+--
 -- Sont exclues du comptage les sources de test et les cohortes exclues de
 -- l'analytics. Le bouche-a-oreille et les reinscriptions directes (code 'BAO')
 -- restent visibles sur leur propre ligne, sans engagement.
 
 with engagements as (
     select * from {{ ref('stg_projects__engagements') }}
+),
+
+-- Le libelle, le type de financeur et le departement viennent de la feuille du
+-- bureau, qui ne porte qu'une annee. On les rattache au code de projet plutot
+-- qu'a la ligne (projet, annee), sinon toutes les annees que la feuille ne
+-- couvre pas afficheraient un libelle vide. Le libelle le plus recent gagne.
+identite_projet as (
+    select
+        project_code,
+        max_by(project_label, annee)   as project_label,
+        max_by(financeur_type, annee)  as financeur_type,
+        max_by(departement, annee)     as departement
+    from engagements
+    group by project_code
 ),
 
 enfants as (
@@ -59,10 +99,6 @@ enfants as (
     from {{ ref('suivi_engagements_enfant') }}
     where not is_source_test
       and not is_cohorte_exclue
-),
-
-annees as (
-    select distinct annee from engagements
 ),
 
 comptes as (
@@ -75,6 +111,9 @@ comptes as (
         -- ventilation des trois millesimes : ces quatre colonnes somment a
         -- nb_enfants_suivis
         count_if(e.rattachement_temporel = 'annee_precedente')  as nb_enfants_annee_precedente,
+        -- dont ceux dont le cycle d'appels etait deja clos : ils comptent dans
+        -- la portee sans consommer de place
+        count_if(e.is_report_sans_place)                        as nb_reports_sans_place,
         count_if(e.rattachement_temporel = 'annee_courante')    as nb_enfants_annee_courante,
         count_if(e.rattachement_temporel = 'annee_suivante')    as nb_enfants_annee_suivante,
         count_if(e.rattachement_temporel = 'non_planifie')      as nb_enfants_non_planifie,
@@ -84,6 +123,20 @@ comptes as (
         count_if(e.is_inscrit_dans_annee and e.is_suivi)        as nb_enfants_inscrits_dans_annee,
         count_if(e.is_suivi and e.rattachement_temporel != 'annee_precedente')
                                                                 as nb_enfants_nouveaux,
+
+        -- enfants effectivement en cohorte dans l'annee, chacun pour une unite :
+        -- les reports de l'annee precedente plus les entrees de l'annee. Exclut
+        -- les inscrits dont la cohorte est planifiee plus tard, pas planifiee ou
+        -- jamais venue -- soit 104 enfants sur 8 287 en 2026.
+        count_if(e.is_en_cohorte_dans_annee)                    as nb_enfants_en_cohorte,
+        count(distinct case when e.is_en_cohorte_dans_annee then e.family_id end)
+                                                                as nb_familles_en_cohorte,
+
+        -- entrees : une cohorte demarree dans l'annee vaut une unite entiere,
+        -- sans prorata ni decote d'attrition. nb_enfants_annee_courante porte le
+        -- compte en enfants, celle-ci le meme en familles.
+        count(distinct case when e.is_entree_dans_annee then e.family_id end)
+                                                                as nb_familles_entrees,
 
         -- les deux faces du quota
         round(sum(e.quota_annee_a_date), 1)                     as quota_consomme,
@@ -106,8 +159,6 @@ comptes as (
         sum(case when e.is_suivi and e.is_mesurable then e.deux_appels_ok_plus_une_pm else 0 end)
                                                                 as nb_enfants_deux_appels_ok_une_pm_mesurables
     from enfants as e
-    join annees as a
-        on a.annee = e.annee_suivi
     group by e.project_code, e.annee_suivi
 ),
 
@@ -206,21 +257,25 @@ base as (
     select
         coalesce(e.project_code, c.project_code)        as project_code,
         coalesce(e.annee, c.annee)                      as annee,
-        e.project_label,
-        e.financeur_type,
-        e.departement,
+        coalesce(e.project_label, ip.project_label, c.project_code) as project_label,
+        coalesce(e.financeur_type, ip.financeur_type)               as financeur_type,
+        coalesce(e.departement, ip.departement)                     as departement,
         e.nb_enfants_engages,
         e.nb_enfants_projetes,
 
         coalesce(c.nb_enfants_suivis, 0)                as nb_enfants_suivis,
         coalesce(c.nb_familles_suivies, 0)              as nb_familles_suivies,
         coalesce(c.nb_enfants_annee_precedente, 0)      as nb_enfants_annee_precedente,
+        coalesce(c.nb_reports_sans_place, 0)            as nb_reports_sans_place,
         coalesce(c.nb_enfants_annee_courante, 0)        as nb_enfants_annee_courante,
         coalesce(c.nb_enfants_annee_suivante, 0)        as nb_enfants_annee_suivante,
         coalesce(c.nb_enfants_non_planifie, 0)          as nb_enfants_non_planifie,
         coalesce(c.nb_enfants_non_accompagnes, 0)       as nb_enfants_non_accompagnes,
         coalesce(c.nb_enfants_inscrits_dans_annee, 0)   as nb_enfants_inscrits_dans_annee,
         coalesce(c.nb_enfants_nouveaux, 0)              as nb_enfants_nouveaux,
+        coalesce(c.nb_familles_entrees, 0)              as nb_familles_entrees,
+        coalesce(c.nb_enfants_en_cohorte, 0)            as nb_enfants_en_cohorte,
+        coalesce(c.nb_familles_en_cohorte, 0)           as nb_familles_en_cohorte,
 
         coalesce(c.quota_consomme, 0)                   as quota_consomme,
         coalesce(c.quota_acquis_fin_annee, 0)           as quota_acquis_fin_annee,
@@ -256,6 +311,8 @@ base as (
     left join projection as p
         on p.project_code = coalesce(e.project_code, c.project_code)
        and p.annee = coalesce(e.annee, c.annee)
+    left join identite_projet as ip
+        on ip.project_code = coalesce(e.project_code, c.project_code)
     left join report_annee_suivante as ra
         on ra.project_code = coalesce(e.project_code, c.project_code)
        and ra.annee = coalesce(e.annee, c.annee)
@@ -305,12 +362,16 @@ select
     nb_enfants_suivis,
     nb_familles_suivies,
     nb_enfants_annee_precedente,
+    nb_reports_sans_place,
     nb_enfants_annee_courante,
     nb_enfants_annee_suivante,
     nb_enfants_non_planifie,
     nb_enfants_non_accompagnes,
     nb_enfants_inscrits_dans_annee,
     nb_enfants_nouveaux,
+    nb_familles_entrees,
+    nb_enfants_en_cohorte,
+    nb_familles_en_cohorte,
 
     -- comptabilite : les places consommees
     quota_consomme,
@@ -325,6 +386,12 @@ select
 
     -- avancement
     quota_consomme / nullif(nb_enfants_engages, 0)  as taux_atteinte_quota,
+    -- troisieme lecture : les entrees de l'annee, comptees une unite chacune.
+    -- nb_enfants_annee_courante en est le numerateur.
+    nb_enfants_annee_courante / nullif(nb_enfants_engages, 0) as taux_atteinte_entrees,
+    -- quatrieme lecture : les enfants en cohorte dans l'annee, chacun pour un,
+    -- reports de l'annee precedente compris.
+    nb_enfants_en_cohorte / nullif(nb_enfants_engages, 0) as taux_atteinte_en_cohorte,
     nb_enfants_suivis / nullif(nb_enfants_engages, 0) as taux_atteinte_portee,
     case
         when annee < year(current_date) then 1
@@ -372,6 +439,15 @@ select
                                                     as quota_projete_fin_annee,
     m.nb_enfants_suivis + m.nb_entrees_attendues_fin_annee
                                                     as nb_enfants_suivis_projete,
+
+    -- Projection des enfants en cohorte : les reports de l'annee precedente et
+    -- les entrees deja faites sont acquis, seules les entrees encore attendues
+    -- sont estimees. C'est la projection la plus solide des trois, parce que la
+    -- part pariee y est la plus faible.
+    m.nb_enfants_en_cohorte + m.nb_entrees_attendues_fin_annee
+                                                    as nb_enfants_en_cohorte_projete,
+    (m.nb_enfants_en_cohorte + m.nb_entrees_attendues_fin_annee)
+        / nullif(m.quota_vendu, 0)                  as taux_atteinte_en_cohorte_projete,
 
     -- Avance ou retard sur le calendrier, en points de pourcentage : c'est la
     -- colonne a trier pour savoir qui relancer. Negatif = en retard.

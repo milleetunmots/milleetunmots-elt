@@ -31,6 +31,27 @@ models:
           Mesure de portée : enfants accompagnés au moins un jour dans l'année.
           À ne jamais présenter pour places_consommees, et à ne jamais sommer
           entre années — un enfant compte sur deux années consécutives.
+      - name: enfants_en_cohorte
+        description: >
+          Les enfants dont une cohorte tourne dans l'année, chacun pour un :
+          reports de l'année précédente plus entrées de l'année. Exclut les
+          inscrits sans cohorte en cours. Avec familles_en_cohorte,
+          pct_en_cohorte, et la projection enfants_en_cohorte_projetes.
+      - name: enfants_en_cohorte_projetes
+        description: >
+          La projection la plus solide : seules les entrées encore attendues sont
+          estimées, les reports et les entrées déjà faites sont acquis.
+      - name: enfants_entres_dans_annee
+        description: >
+          Les entrées de l'année, comptées une unité chacune : une famille qui
+          entre dans le programme est accompagnée, qu'elle aille au bout de son
+          cycle ou non. Avec familles_entrees_dans_annee et pct_entrees. La seule
+          des trois mesures qui se somme entre années sans double comptage.
+      - name: familles_entrees_dans_annee
+        description: >
+          Le même compte en familles. count(distinct) par projet : à ne pas
+          sommer entre financeurs sans accepter 2 familles comptées deux fois en
+          2026.
       - name: enfants_suivis_plutot_en_n_plus_1
         description: >
           Enfants comptés cette année dont la majorité du cycle tombera l'année

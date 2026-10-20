@@ -45,6 +45,11 @@
 -- child_supports), agregees par family_id ; cohorte, departement et date de fin
 -- d'accompagnement sont relus dans les dimensions.
 --
+-- Trois codes de projet ne designent pas un financeur mais une sortie de
+-- perimetre, et sont la pour que rien ne disparaisse en silence : 'TEST' (source
+-- de test), 'BAO' (bouche-a-oreille, que personne ne finance) et 'SANS_SOURCE'
+-- (source non renseignee, 39 enfants de 2023 a 2025).
+--
 -- Les colonnes is_* ne filtrent rien ici : l'agregat suivi_engagements decide
 -- ce qu'il exclut, le detail reste auditable.
 
@@ -108,12 +113,12 @@ enfant as (
     select
         c.child_id,
         c.family_id,
-        sp.project_code,
-        sp.source_id,
+        coalesce(sp.project_code, 'SANS_SOURCE') as project_code,
+        cs.source_id,
         sp.source_name,
         sp.channel                      as source_channel,
         sp.departement                  as source_departement,
-        sp.is_hors_feuille,
+        coalesce(sp.is_hors_feuille, false) as is_hors_feuille,
         p.departement                   as famille_departement,
         c.date_created                  as date_inscription,
         year(c.date_created)            as annee_inscription,
@@ -149,7 +154,12 @@ enfant as (
     from child as c
     join children_sources as cs
         on cs.child_id = c.child_id
-    join source_project as sp
+    -- jointure externe, et non interne : 39 enfants accompagnes entre 2023 et
+    -- 2025 portent une ligne children_sources dont le source_id est nul. Aucun
+    -- financeur n'est determinable pour eux, mais une jointure interne les
+    -- faisait disparaitre du suivi sans laisser de trace. Ils sortent donc du
+    -- perimetre par un code explicite, comme les sources de test.
+    left join source_project as sp
         on sp.source_id = cs.source_id
     left join parent as p
         on p.parent_id = c.parent1_id
@@ -161,11 +171,24 @@ enfant as (
     where c.date_discarded is null
 ),
 
+-- Bornes de la plage d'annees, lues dans les donnees plutot que codees en dur :
+-- l'invariant de couverture (tout enfant apparait au moins une fois) en depend,
+-- et une constante le casserait silencieusement si des annees anterieures
+-- etaient reprises un jour.
+bornes as (
+    select least(
+               min(year(date_inscription)),
+               coalesce(min(year(date_debut_accompagnement)), 9999)
+           ) as premiere_annee
+    from enfant
+),
+
 annees as (
     select annee_suivi
     from (
-        select 2019 + seq4() as annee_suivi
-        from table(generator(rowcount => 20))
+        select b.premiere_annee + seq4() as annee_suivi
+        from table(generator(rowcount => 40))
+        cross join bornes as b
     )
     where annee_suivi <= year(current_date) + 1
 ),
@@ -177,14 +200,22 @@ ventile as (
         date_from_parts(a.annee_suivi, 1, 1)   as debut_annee,
         date_from_parts(a.annee_suivi, 12, 31) as fin_annee,
         case
-            -- cycle encore en cours au 1er janvier : vient de l'annee
-            -- precedente. La borne est la fin de CYCLE, pas la date du statut
-            -- 'stopped' : celui-ci est pose en moyenne 127 jours apres le
-            -- dernier appel, et 1 791 enfants dont le cycle s'etait acheve en
-            -- 2025 tombaient ainsi dans l'annee 2026 sans y etre accompagnes un
-            -- seul jour -- 45 % de la categorie.
+            -- accompagnement encore ouvert au 1er janvier : vient de l'annee
+            -- precedente. La borne est date_fin_accompagnement, c'est-a-dire la
+            -- fin de cohorte ou la cloture du statut si elle est arrivee avant --
+            -- la meme que ended_at_perso dans mecene, pour que le bureau lise ici
+            -- le chiffre qu'il lit deja la : 3 954 enfants reportes de 2025 sur
+            -- 2026, et non 2 163.
+            --
+            -- Consequence a connaitre : le quota, lui, se borne sur le cycle des
+            -- quatre appels (date_fin_quota). Un enfant dont le cycle s'est
+            -- acheve l'annee precedente mais dont le statut est reste ouvert est
+            -- donc un report qui ne consomme aucune place -- 1 791 des 3 954 en
+            -- 2026. Ce n'est pas une incoherence : la portee compte une presence
+            -- dans le programme, le quota des jours d'appel. La colonne
+            -- is_report_sans_place les rend visibles.
             when e.date_debut_accompagnement < date_from_parts(a.annee_suivi, 1, 1)
-             and e.date_fin_quota            >= date_from_parts(a.annee_suivi, 1, 1)
+             and e.date_fin_accompagnement   >= date_from_parts(a.annee_suivi, 1, 1)
                 then 'A. accompagnement en cours au 1er janvier'
             -- cohorte demarree dans l'annee
             when year(e.date_debut_accompagnement) = a.annee_suivi
@@ -276,6 +307,26 @@ select
     v.annee_inscription,
     -- l'enfant a-t-il ete inscrit dans l'annee de suivi, ou avant ?
     v.annee_inscription = v.annee_suivi             as is_inscrit_dans_annee,
+    -- l'enfant est-il ENTRE dans le programme cette annee-la, c'est-a-dire sa
+    -- cohorte a-t-elle demarre dans l'annee ? C'est la definition de la mesure
+    -- « entrees » : une entree vaut une unite entiere, qu'elle soit allee au
+    -- bout de son cycle ou non. Chaque enfant n'est donc entre qu'une seule
+    -- fois, sur une seule annee : contrairement a la portee, qui le compte sur
+    -- deux annees consecutives, et au quota, qui le partage entre elles, les
+    -- entrees se somment entre annees sans double comptage.
+    v.categorie_suivi like 'B.%'                    as is_entree_dans_annee,
+    -- l'enfant a-t-il effectivement integre une cohorte, et celle-ci tourne-t-elle
+    -- dans l'annee ? Vrai pour les reports de l'annee precedente (categorie A) et
+    -- pour les entrees de l'annee (categorie B), faux pour les inscrits dont la
+    -- cohorte est planifiee plus tard, pas planifiee, ou jamais venue. C'est le
+    -- perimetre de la mesure « enfants en cohorte », ou chacun compte pour un.
+    v.categorie_suivi like 'A.%'
+      or v.categorie_suivi like 'B.%'               as is_en_cohorte_dans_annee,
+    -- report dont le cycle d'appels s'etait deja acheve au 1er janvier : il
+    -- compte dans la portee, il ne consomme aucune place. C'est l'ecart entre la
+    -- convention de comptage (statut) et celle du quota (cycle).
+    v.categorie_suivi like 'A.%'
+      and v.nb_jours_suivi_dans_annee = 0           as is_report_sans_place,
     v.is_reenrollment,
     v.child_age_in_month,
     v.cohorte,

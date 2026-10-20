@@ -6,12 +6,17 @@ models:
       Suivi des engagements du bureau : une ligne par projet (= financeur) et
       par année de suivi. Le quota vendu et la projection viennent de la feuille
       Google du bureau (source projects), le reste de l'application.
-      Deux mesures de ce qui a été fait, qui ne disent pas la même chose et ne
+      Quatre mesures de ce qui a été fait, qui ne disent pas la même chose et ne
       s'additionnent pas : nb_enfants_suivis compte les enfants accompagnés au
-      moins un jour dans l'année (portée), quota_consomme somme les places
-      réellement consommées (comptabilité). 7 900 enfants touchés en 2026 pour
-      3 685 places consommées au 13 octobre : un cycle dure 174 jours et
-      chevauche deux années civiles.
+      moins un jour dans l'année (portée), nb_enfants_annee_courante les entrées
+      de l'année comptées une unité chacune, nb_enfants_en_cohorte ces entrées
+      plus les reports de l'année précédente — soit tous les enfants dont une
+      cohorte tourne dans l'année, chacun pour un — et quota_consomme les places
+      réellement consommées (comptabilité). Ce qui les distingue est le sort d'un
+      enfant à cheval sur deux années : la portée le compte dans les deux, les
+      entrées une fois l'année de son entrée, le quota le partage entre elles.
+      Les entrées sont donc la seule des trois qui se somme entre années sans
+      double comptage.
       Ne jamais sommer les années : un même enfant compte sur deux années
       consécutives.
     columns:
@@ -88,12 +93,27 @@ models:
           apportée par les enfants entrés l'année précédente.
       - name: nb_enfants_annee_precedente
         description: >
-          Ventilation de la portée. Cycle encore en cours au 1er janvier : ces
-          enfants sont entrés en cohorte avant l'année. 27 % de la portée 2026.
-          La borne est la fin de cycle et non la date du statut 'stopped', posé
-          en moyenne 127 jours après le dernier appel : 1 791 enfants dont le
-          cycle s'était achevé en 2025 tombaient sinon dans l'année 2026 sans y
-          être accompagnés un seul jour.
+          Ventilation de la portée. Accompagnement encore ouvert au 1er janvier :
+          ces enfants sont entrés en cohorte l'année précédente. 3 954 enfants
+          reportés de 2025 sur 2026, soit 39 % de la portée.
+          La borne est date_fin_accompagnement — fin de cohorte, ou clôture du
+          statut si elle est arrivée avant — soit la même que ended_at_perso dans
+          mecene, pour que le bureau lise ici le chiffre qu'il lit déjà là. Le
+          contrôle à périmètre égal donne 3 954 contre 3 957 dans mecene, avec
+          exactement 3 enfants d'écart et aucun en sens inverse : 2 de la source
+          « PMI Test » que ce modèle exclut, et 1 enfant supprimé — ce modèle
+          filtre sur la suppression de l'enfant, mecene sur celle de la famille.
+      - name: nb_reports_sans_place
+        description: >
+          Parmi les reports, ceux dont le cycle d'appels était déjà clos au
+          1er janvier : ils comptent dans la portée sans consommer la moindre
+          place. 1 791 sur 3 954 en 2026.
+          C'est l'écart assumé entre les deux conventions du modèle : le comptage
+          suit le statut de l'application, le quota suit le cycle des quatre
+          appels. Ce n'est pas une incohérence — la portée mesure une présence
+          dans le programme, le quota des jours d'appel — mais c'est la première
+          chose à regarder quand quelqu'un s'étonne qu'un financeur ait beaucoup
+          d'enfants et peu de places.
       - name: nb_enfants_annee_courante
         description: Cohorte démarrée dans l'année.
       - name: nb_enfants_annee_suivante
@@ -112,8 +132,52 @@ models:
           silencieuse.
       - name: nb_enfants_nouveaux
         description: >
-          Entrants de l'année : catégories B + C + D, soit la portée moins les
-          enfants venus de l'année précédente.
+          Entrants de l'année au sens large : catégories B + C + D, soit la
+          portée moins les enfants venus de l'année précédente. Inclut donc des
+          enfants dont l'accompagnement n'a pas encore commencé — pour les seules
+          entrées effectives, prendre nb_enfants_annee_courante.
+      - name: nb_enfants_en_cohorte
+        description: >
+          Les enfants effectivement en cohorte dans l'année, chacun pour une
+          unité : les reports de l'année précédente
+          (nb_enfants_annee_precedente) plus les entrées de l'année
+          (nb_enfants_annee_courante). C'est la portée restreinte à ceux qui ont
+          vraiment intégré une cohorte — elle exclut les inscrits dont la cohorte
+          est planifiée plus tard, pas planifiée, ou jamais venue : 104 enfants
+          sur 10 078 en 2026. 9 974 enfants en 2026, dont 3 954 venus de 2025.
+          Un report vient toujours d'une cohorte de l'année précédente
+          exactement, jamais d'avant : le cycle de 174 jours ne permet pas qu'une
+          cohorte de N-2 tourne encore au 1er janvier.
+      - name: nb_familles_en_cohorte
+        description: >
+          Le même compte en familles. count(distinct) par projet, donc non
+          sommable entre financeurs sans double compter les fratries réparties
+          sur deux projets — même réserve que nb_familles_entrees.
+      - name: nb_enfants_en_cohorte_projete
+        description: >
+          nb_enfants_en_cohorte plus les entrées encore attendues d'ici la fin de
+          l'année. La projection la plus solide des trois : les reports et les
+          entrées déjà faites sont acquis, seules les entrées à venir sont
+          estimées — 302 sur 8 485 au 20 octobre 2026, soit 4 % de pari.
+      - name: taux_atteinte_en_cohorte
+        description: nb_enfants_en_cohorte / quota_vendu.
+      - name: taux_atteinte_en_cohorte_projete
+        description: nb_enfants_en_cohorte_projete / quota_vendu.
+      - name: nb_familles_entrees
+        description: >
+          Les entrées de l'année comptées en familles : une famille qui entre
+          dans le programme compte pour une, qu'elle soit allée au bout de son
+          cycle ou non. nb_enfants_annee_courante est le même compte en enfants.
+          Attention, c'est un count(distinct) par projet : le sommer sur
+          plusieurs financeurs compte deux fois les familles dont deux enfants
+          sont entrés par deux financeurs différents — 2 familles en 2026, pour
+          5 499 sommées contre 5 497 distinctes. Pour un total exact, compter sur
+          suivi_engagements_enfant. Même réserve sur nb_familles_suivies.
+      - name: taux_atteinte_entrees
+        description: >
+          nb_enfants_annee_courante / quota_vendu. La lecture la plus favorable
+          des trois, et la plus simple à expliquer à un financeur : le nombre
+          d'enfants à qui l'accompagnement a été ouvert dans l'année.
       - name: taux_atteinte_quota
         description: quota_consomme / quota_vendu.
       - name: taux_atteinte_portee
@@ -264,6 +328,26 @@ models:
           moyenne 232 jours après le début et marque la fin normale du cycle,
           'disengaged' tombe à 86 jours et marque le décrochage réel. 5 313 et
           2 650 enfants respectivement sur les cohortes 2025.
+      - name: is_en_cohorte_dans_annee
+        description: >
+          L'enfant a-t-il effectivement intégré une cohorte, et celle-ci tourne-t-elle
+          dans l'année ? Vrai pour les reports de l'année précédente et les
+          entrées de l'année, faux pour les inscrits dont la cohorte est
+          planifiée plus tard, pas planifiée, ou jamais venue. C'est le périmètre
+          de la mesure « enfants en cohorte ».
+      - name: is_report_sans_place
+        description: >
+          Report dont le cycle d'appels s'était déjà achevé au 1er janvier : il
+          compte dans la portée, il ne consomme aucune place. Rend visible
+          l'écart entre la convention de comptage (statut de l'application) et
+          celle du quota (cycle des quatre appels).
+      - name: is_entree_dans_annee
+        description: >
+          L'enfant est-il entré dans le programme cette année-là, c'est-à-dire sa
+          cohorte a-t-elle démarré dans l'année ? C'est la définition de la
+          mesure « entrées » : une entrée vaut une unité entière, sans prorata ni
+          décote d'attrition. Vrai sur une seule année par enfant, donc sommable
+          entre années — ce que ni la portée ni le quota ne permettent.
       - name: is_mesurable
         description: >
           La cohorte de l'enfant a passé sa date de fin d'appel 1 : le
