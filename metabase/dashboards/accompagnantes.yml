@@ -1,0 +1,792 @@
+# Dashboard des accompagnantes : ce que le programme fait, et ou chacune se
+# situe. Deux onglets, deux publics d'une meme personne -- la communaute d'abord,
+# soi ensuite.
+#
+# CE QU'IL EST. Toutes les cartes sont en SQL natif sur fact.super_table, jointe
+# a dim.groups pour les dates de session. La maille partout est famille x
+# session : une fratrie partage le meme appel, la compter deux fois gonflerait
+# les denominateurs. D'ou le max() par family_id avant tout calcul.
+#
+# LES TROIS REGLES REPRISES DE LA SKILL analyse-cohorte, non negociables :
+#   1. Denominateur = les sessions dont le STATUT EST RENSEIGNE. Environ 12 %
+#      des lignes n'en ont pas, et ce sont presque exclusivement des parcours
+#      arretes. Compter toutes les familles fabrique une fausse erosion session
+#      apres session (63 % -> 44 % au lieu de 66 % -> 64 %).
+#   2. Une ligne par famille x session, jamais par enfant.
+#   3. Seules les sessions TERMINEES (session_end <= current_date). Sans ce
+#      filtre les cohortes en cours apparaissent a ~0 %.
+# La petite mission est le seul taux qui echappe a la regle 1 : son
+# denominateur est les appels OK, qui ont toujours un statut.
+#
+# L'ACCOMPAGNANTE est super_table.supporter_name, un EMAIL -- pas le nom
+# affiche de dim.admin_users. C'est l'affectation courante de la famille et non
+# le passeur reel de l'appel : mesure faite, les deux coincident a 95,8 % sur
+# 2026, l'ecart etant les remplacements et les reaffectations. Une accompagnante
+# verra donc une poignee d'appels qu'elle n'a pas passes, et inversement.
+#
+# POURQUOI DEUX SCANS dans les cartes comparatives. Le filtre « Accompagnante »
+# est un field filter : Metabase va chercher les valeurs en direct dans la
+# colonne, il n'y a aucune liste en dur a maintenir. Mais il s'injecte la ou le
+# tag est pose, et la table filtree doit y etre NON ALIASEE. Pour afficher « moi
+# contre la moyenne collective » il faut donc deux lectures de super_table : une
+# qui porte le filtre, une qui ne le porte pas. Sans cela le filtre ecraserait
+# aussi la moyenne, qui vaudrait alors toujours la valeur individuelle.
+#
+# SANS SELECTION le filtre ne s'applique pas : les deux series se superposent.
+# C'est le comportement attendu, les cartes le disent dans leur titre.
+#
+# CE QUE L'ONGLET 2 NE DOIT PAS DEVENIR. Cinq cartes, c'est deja beaucoup pour
+# un outil qu'on ouvre entre deux appels. La duree mediane d'appel en a ete
+# retiree le 2026-10-20 : elle n'est ni bonne ni mauvaise en soi, personne ne
+# savait quoi en faire, et elle prenait la place d'une carte actionnable.
+# Avant d'ajouter une carte ici, en retirer une.
+#
+# LES ENFANTS SANS ACCOMPAGNANTE AFFECTEE sont exclus partout ou le
+# denominateur n'est pas deja filtre par un statut d'appel : ils sont 596 sur
+# les cohortes de la rentree, tous sans statut, et tireraient le collectif vers
+# le bas sans correspondre a personne. Concerne la carte de proposition de RDV ;
+# les autres les ecartent deja par la regle du statut renseigne.
+
+name: Accompagnantes — le programme et moi
+description: >
+  Ce que le programme produit, et ou chacune se situe. Onglet 1 : les chiffres
+  de la communaute depuis le debut, et leur evolution mensuelle sur deux ans.
+  Onglet 2 : ses propres chiffres sur six mois, chacun face a la moyenne
+  collective — selectionner son adresse dans le filtre « Accompagnante ».
+  Toutes les mesures portent sur les sessions d'appel TERMINEES et sur les
+  familles dont le statut d'appel est renseigne ; les familles sans statut sont
+  des parcours arretes et fausseraient les taux. Un appel OK est un appel mene
+  en entier. Spec : metabase/dashboards/accompagnantes.yml
+
+collection: Claude/Accompagnantes
+database: snowflake_dw
+
+tabs:
+  - Statistiques globales
+  - Mes statistiques
+
+filters:
+  - slug: accompagnante
+    display_name: Accompagnante
+    type: string/=
+    dimension: FACT.SUPER_TABLE.SUPPORTER_NAME
+
+cards:
+
+  # ======================================================= ONGLET 1 — GLOBALES
+
+  - name: Titre global
+    tab: Statistiques globales
+    display: heading
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Depuis le debut du programme
+
+  - name: Familles accompagnees depuis le debut
+    tab: Statistiques globales
+    display: scalar
+    row: 1
+    col: 0
+    size_x: 6
+    size_y: 3
+    description: >
+      Familles ayant eu au moins une session d'appel terminee avec un statut
+      renseigne, depuis le debut du programme. Maille famille : une fratrie
+      compte pour une.
+    visualization:
+      scalar.field: Familles accompagnees
+    sql: |
+      with sessions as (
+          select super_table.family_id,
+                 super_table.call_0_status as statut, groups.date_call0_end::date as fin
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, super_table.call1_status, groups.date_call1_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, super_table.call2_status, groups.date_call2_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, super_table.call3_status, groups.date_call3_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+      )
+      select count(distinct family_id) as "Familles accompagnees"
+      from sessions
+      where fin <= current_date and nullif(trim(statut), '') is not null
+
+  - name: Familles suivies a date
+    tab: Statistiques globales
+    display: scalar
+    row: 1
+    col: 6
+    size_x: 6
+    size_y: 3
+    description: >
+      Familles dont le statut d'accompagnement est « active » aujourd'hui. Stock
+      en cours, pas un cumul. Lu sur fact.super_table, comme toutes les autres
+      cartes, pour que le dashboard reste coherent avec lui-meme.
+      ECART CONNU, non tranche : fact.child_life_status en compte 7 268 contre
+      4 314 ici. La difference est de 2 539 familles « active » dans l'historique
+      et « stopped » dans super_table, plus 415 absentes de super_table. Une des
+      deux sources est en retard sur l'autre ; tant que ce n'est pas elucide, ce
+      chiffre est un plancher.
+    visualization:
+      scalar.field: Familles suivies
+    sql: |
+      select count(distinct family_id) as "Familles suivies"
+      from fact.super_table
+      where group_status = 'active'
+        and not coalesce(is_excluded_from_analytics, false)
+
+  - name: Appels traites depuis le debut
+    tab: Statistiques globales
+    display: scalar
+    row: 1
+    col: 12
+    size_x: 6
+    size_y: 3
+    description: >
+      Sessions d'appel terminees dont le statut est renseigne, toutes familles
+      et toutes sessions confondues. Une session, pas une tentative : une
+      famille rappelee trois fois compte une fois.
+    visualization:
+      scalar.field: Appels traites
+    sql: |
+      with sessions as (
+          select super_table.family_id, 0 as session,
+                 super_table.call_0_status as statut, groups.date_call0_end::date as fin
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 1, super_table.call1_status, groups.date_call1_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 2, super_table.call2_status, groups.date_call2_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 3, super_table.call3_status, groups.date_call3_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+      ),
+      par_famille_session as (
+          select family_id, session, max(statut) as statut, max(fin) as fin
+          from sessions group by 1, 2
+      )
+      select count(*) as "Appels traites"
+      from par_famille_session
+      where fin <= current_date and nullif(trim(statut), '') is not null
+
+  - name: Petites missions posees depuis le debut
+    tab: Statistiques globales
+    display: scalar
+    row: 1
+    col: 18
+    size_x: 6
+    size_y: 3
+    description: >
+      Sessions terminees et menees en entier (statut OK) a l'issue desquelles
+      une petite mission a ete envoyee par SMS.
+    visualization:
+      scalar.field: Petites missions posees
+    sql: |
+      with sessions as (
+          select super_table.family_id, 0 as session, super_table.call_0_status as statut,
+                 super_table.is_call0_goals as pm, groups.date_call0_end::date as fin
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 1, super_table.call1_status, super_table.is_call1_goals, groups.date_call1_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 2, super_table.call2_status, super_table.is_call2_goals, groups.date_call2_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 3, super_table.call3_status, super_table.is_call3_goals, groups.date_call3_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+      ),
+      par_famille_session as (
+          select family_id, session, max(statut) as statut, max(pm) as pm, max(fin) as fin
+          from sessions group by 1, 2
+      )
+      select count_if(pm = 1) as "Petites missions posees"
+      from par_famille_session
+      where fin <= current_date and statut = 'OK'
+
+  - name: Titre evolution
+    tab: Statistiques globales
+    display: heading
+    row: 4
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Evolution sur deux ans
+
+  - name: Taux d'appels OK par mois
+    tab: Statistiques globales
+    display: line
+    row: 5
+    col: 0
+    size_x: 12
+    size_y: 6
+    description: >
+      Part des sessions menees en entier parmi les sessions dont le statut est
+      renseigne, par mois de cloture de session, sur 24 mois. Le denominateur
+      exclut les familles sans statut : ce sont des parcours arretes, les
+      compter fabriquerait une erosion qui n'existe pas.
+    visualization:
+      graph.dimensions: [Mois]
+      graph.metrics: [Taux d'appels OK]
+      graph.y_axis.title_text: "%"
+    sql: |
+      with sessions as (
+          select super_table.family_id, 0 as session, super_table.call_0_status as statut,
+                 groups.date_call0_end::date as fin
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 1, super_table.call1_status, groups.date_call1_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 2, super_table.call2_status, groups.date_call2_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 3, super_table.call3_status, groups.date_call3_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+      ),
+      par_famille_session as (
+          select family_id, session, max(statut) as statut, max(fin) as fin
+          from sessions group by 1, 2
+      )
+      select date_trunc('month', fin)::date                                as "Mois",
+             round(100.0 * count_if(statut = 'OK') / count(*), 1)          as "Taux d'appels OK",
+             count(*)                                                      as "Appels traites"
+      from par_famille_session
+      where fin <= current_date
+        and fin >= dateadd(month, -24, date_trunc('month', current_date))
+        and nullif(trim(statut), '') is not null
+      group by 1
+      order by 1
+
+  - name: Taux de petites missions par mois
+    tab: Statistiques globales
+    display: line
+    row: 5
+    col: 12
+    size_x: 12
+    size_y: 6
+    description: >
+      Part des appels OK a l'issue desquels une petite mission a ete posee, par
+      mois de cloture de session, sur 24 mois. Denominateur : les appels OK, qui
+      ont toujours un statut — cette metrique n'est donc pas touchee par la
+      regle du statut renseigne.
+    visualization:
+      graph.dimensions: [Mois]
+      graph.metrics: [Taux de petites missions]
+      graph.y_axis.title_text: "%"
+    sql: |
+      with sessions as (
+          select super_table.family_id, 0 as session, super_table.call_0_status as statut,
+                 super_table.is_call0_goals as pm, groups.date_call0_end::date as fin
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 1, super_table.call1_status, super_table.is_call1_goals, groups.date_call1_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 2, super_table.call2_status, super_table.is_call2_goals, groups.date_call2_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 3, super_table.call3_status, super_table.is_call3_goals, groups.date_call3_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+      ),
+      par_famille_session as (
+          select family_id, session, max(statut) as statut, max(pm) as pm, max(fin) as fin
+          from sessions group by 1, 2
+      )
+      select date_trunc('month', fin)::date                        as "Mois",
+             round(100.0 * count_if(pm = 1) / count(*), 1)         as "Taux de petites missions",
+             count(*)                                              as "Appels OK"
+      from par_famille_session
+      where fin <= current_date
+        and fin >= dateadd(month, -24, date_trunc('month', current_date))
+        and statut = 'OK'
+      group by 1
+      order by 1
+
+  - name: Ce que produit une petite mission
+    tab: Statistiques globales
+    display: bar
+    row: 11
+    col: 0
+    size_x: 24
+    size_y: 6
+    description: >
+      Apres un appel mene en entier, part des appels de la session SUIVANTE qui
+      aboutissent, selon qu'une petite mission a ete posee ou non. Sur 18 mois
+      et plusieurs milliers d'appels, l'ecart est de 6 a 8 points et il ne
+      faiblit pas d'une session a l'autre.
+      A lire comme une correlation et non comme un effet : un appel qui s'est
+      bien passe produit a la fois une mission et un appel suivant plus facile.
+      La constance de l'ecart reste le fait le plus notable du dispositif.
+    visualization:
+      graph.dimensions: [Session]
+      graph.metrics: [Avec une mission posee, Sans mission]
+      graph.y_axis.title_text: "% d'appels OK a la session suivante"
+    sql: |
+      with base as (
+          select st.family_id,
+                 st.is_call0_goals as pm0, st.is_call1_goals as pm1, st.is_call2_goals as pm2,
+                 st.call_0_status as s0, st.call1_status as s1,
+                 st.call2_status as s2, st.call3_status as s3,
+                 g.date_call1_end::date as f1, g.date_call2_end::date as f2,
+                 g.date_call3_end::date as f3
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+      ),
+      sessions as (
+          select family_id, 0 as n, pm0 as pm, s0 as statut, s1 as suivant, f1 as fin from base
+          union all select family_id, 1, pm1, s1, s2, f2 from base
+          union all select family_id, 2, pm2, s2, s3, f3 from base
+      ),
+      par_famille as (
+          select family_id, n, max(pm) as pm, max(statut) as statut,
+                 max(suivant) as suivant, max(fin) as fin
+          from sessions group by 1, 2
+      )
+      select 'Apres l''appel ' || n::varchar                                               as "Session",
+             round(100.0 * count_if(suivant = 'OK' and pm = 1) / nullif(count_if(pm = 1), 0), 1) as "Avec une mission posee",
+             round(100.0 * count_if(suivant = 'OK' and pm = 0) / nullif(count_if(pm = 0), 0), 1) as "Sans mission"
+      from par_famille
+      where statut = 'OK'
+        and fin <= current_date
+        and fin >= dateadd(month, -18, current_date)
+        and nullif(trim(suivant), '') is not null
+      group by 1
+      order by 1
+
+  # ========================================================= ONGLET 2 — LA MIENNE
+
+  - name: Titre mes stats
+    tab: Mes statistiques
+    display: heading
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Mes six derniers mois — selectionner son adresse dans le filtre « Accompagnante »
+
+  - name: Mes familles suivies par mois
+    tab: Mes statistiques
+    display: line
+    row: 1
+    col: 0
+    size_x: 24
+    size_y: 6
+    filters: [accompagnante]
+    description: >
+      Photo prise le 15 de chaque mois, sur six mois : familles dont un enfant
+      est alors en statut « active », celles entrees depuis la photo precedente,
+      et celles passees en desengagement. Les trois se lisent ensemble : le
+      stock bouge de la difference entre les deux autres.
+    visualization:
+      graph.dimensions: [Mois]
+      graph.metrics: [Familles suivies, Nouvelles familles, Familles desengagees]
+    sql: |
+      with photos as (
+          select dateadd(day, 14, date_trunc('month', dateadd(month, -n.seq, current_date)))::date as photo
+          from (select row_number() over (order by seq4()) - 1 as seq from table(generator(rowcount => 6))) as n
+      ),
+      familles as (
+          select super_table.family_id, super_table.child_id
+          from fact.super_table
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+            [[and {{accompagnante}}]]
+      ),
+      etats as (
+          select photos.photo, familles.family_id, cls.group_status
+          from photos
+          cross join familles
+          inner join fact.child_life_status as cls
+                  on cls.item_id = familles.child_id
+                 and cls.date_from <= photos.photo
+                 and (cls.date_to is null or cls.date_to > photos.photo)
+      ),
+      par_famille as (
+          select photo, family_id, max(group_status) as statut
+          from etats group by 1, 2
+      ),
+      avec_precedent as (
+          select photo, family_id, statut,
+                 lag(statut) over (partition by family_id order by photo) as statut_precedent
+          from par_famille
+      )
+      select photo                                                                     as "Mois",
+             count_if(statut = 'active')                                               as "Familles suivies",
+             count_if(statut = 'active' and statut_precedent is null)                  as "Nouvelles familles",
+             count_if(statut = 'disengaged' and statut_precedent <> 'disengaged')      as "Familles desengagees"
+      from avec_precedent
+      group by 1
+      order by 1
+
+  - name: Mon taux d'appels OK contre la moyenne collective
+    tab: Mes statistiques
+    display: line
+    row: 7
+    col: 0
+    size_x: 12
+    size_y: 6
+    filters: [accompagnante]
+    description: >
+      Part de mes sessions menees en entier parmi celles dont le statut est
+      renseigne, par mois, sur six mois, face a la moyenne de la communaute sur
+      le meme mois. Sans selection dans le filtre, les deux courbes se
+      superposent. La moyenne collective est calculee par une seconde lecture,
+      non filtree : elle ne bouge pas quand on selectionne quelqu'un.
+    visualization:
+      graph.dimensions: [Mois]
+      graph.metrics: [Moi, Moyenne collective]
+      graph.y_axis.title_text: "%"
+    sql: |
+      with moi as (
+          select super_table.family_id, 0 as session, super_table.call_0_status as statut,
+                 groups.date_call0_end::date as fin
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+            [[and {{accompagnante}}]]
+          union all
+          select super_table.family_id, 1, super_table.call1_status, groups.date_call1_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 2, super_table.call2_status, groups.date_call2_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 3, super_table.call3_status, groups.date_call3_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+      ),
+      tous as (
+          select st.family_id, 0 as session, st.call_0_status as statut, g.date_call0_end::date as fin
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+          union all
+          select st.family_id, 1, st.call1_status, g.date_call1_end::date
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+          union all
+          select st.family_id, 2, st.call2_status, g.date_call2_end::date
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+          union all
+          select st.family_id, 3, st.call3_status, g.date_call3_end::date
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+      ),
+      moi_mois as (
+          select date_trunc('month', fin)::date as mois,
+                 round(100.0 * count_if(statut = 'OK') / count(*), 1) as taux
+          from (select family_id, session, max(statut) as statut, max(fin) as fin from moi group by 1, 2)
+          where fin <= current_date
+            and fin >= dateadd(month, -6, date_trunc('month', current_date))
+            and nullif(trim(statut), '') is not null
+          group by 1
+      ),
+      tous_mois as (
+          select date_trunc('month', fin)::date as mois,
+                 round(100.0 * count_if(statut = 'OK') / count(*), 1) as taux
+          from (select family_id, session, max(statut) as statut, max(fin) as fin from tous group by 1, 2)
+          where fin <= current_date
+            and fin >= dateadd(month, -6, date_trunc('month', current_date))
+            and nullif(trim(statut), '') is not null
+          group by 1
+      )
+      select tous_mois.mois as "Mois", moi_mois.taux as "Moi", tous_mois.taux as "Moyenne collective"
+      from tous_mois
+      left join moi_mois on moi_mois.mois = tous_mois.mois
+      order by 1
+
+  - name: Mon taux de petites missions contre la moyenne collective
+    tab: Mes statistiques
+    display: line
+    row: 7
+    col: 12
+    size_x: 12
+    size_y: 6
+    filters: [accompagnante]
+    description: >
+      Part de mes appels OK a l'issue desquels une petite mission a ete posee,
+      par mois, sur six mois, face a la moyenne de la communaute. C'est la
+      metrique ou l'ecart individuel est le plus large du programme : de 12 % a
+      89 % selon les personnes.
+    visualization:
+      graph.dimensions: [Mois]
+      graph.metrics: [Moi, Moyenne collective]
+      graph.y_axis.title_text: "%"
+    sql: |
+      with moi as (
+          select super_table.family_id, 0 as session, super_table.call_0_status as statut,
+                 super_table.is_call0_goals as pm, groups.date_call0_end::date as fin
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+            [[and {{accompagnante}}]]
+          union all
+          select super_table.family_id, 1, super_table.call1_status, super_table.is_call1_goals, groups.date_call1_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 2, super_table.call2_status, super_table.is_call2_goals, groups.date_call2_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+          union all
+          select super_table.family_id, 3, super_table.call3_status, super_table.is_call3_goals, groups.date_call3_end::date
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+      ),
+      tous as (
+          select st.family_id, 0 as session, st.call_0_status as statut,
+                 st.is_call0_goals as pm, g.date_call0_end::date as fin
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+          union all
+          select st.family_id, 1, st.call1_status, st.is_call1_goals, g.date_call1_end::date
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+          union all
+          select st.family_id, 2, st.call2_status, st.is_call2_goals, g.date_call2_end::date
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+          union all
+          select st.family_id, 3, st.call3_status, st.is_call3_goals, g.date_call3_end::date
+          from fact.super_table as st
+          inner join dim.child  as c on c.child_id = st.child_id
+          inner join dim.groups as g on g.group_id = c.group_id
+          where not coalesce(st.is_excluded_from_analytics, false)
+      ),
+      moi_mois as (
+          select date_trunc('month', fin)::date as mois,
+                 round(100.0 * count_if(pm = 1) / count(*), 1) as taux
+          from (select family_id, session, max(statut) as statut, max(pm) as pm, max(fin) as fin from moi group by 1, 2)
+          where fin <= current_date
+            and fin >= dateadd(month, -6, date_trunc('month', current_date))
+            and statut = 'OK'
+          group by 1
+      ),
+      tous_mois as (
+          select date_trunc('month', fin)::date as mois,
+                 round(100.0 * count_if(pm = 1) / count(*), 1) as taux
+          from (select family_id, session, max(statut) as statut, max(pm) as pm, max(fin) as fin from tous group by 1, 2)
+          where fin <= current_date
+            and fin >= dateadd(month, -6, date_trunc('month', current_date))
+            and statut = 'OK'
+          group by 1
+      )
+      select tous_mois.mois as "Mois", moi_mois.taux as "Moi", tous_mois.taux as "Moyenne collective"
+      from tous_mois
+      left join moi_mois on moi_mois.mois = tous_mois.mois
+      order by 1
+
+  - name: Mon taux de proposition de rendez-vous
+    tab: Mes statistiques
+    display: line
+    row: 13
+    col: 0
+    size_x: 12
+    size_y: 6
+    filters: [accompagnante]
+    description: >
+      Part de mes familles a qui j'ai envoye le lien de prise de rendez-vous,
+      par cohorte depuis le deploiement de fevrier 2026, face au collectif.
+      C'est le levier que l'accompagnante controle entierement, et il vaut
+      environ +7 points sur le taux d'appels OK (skill analyse-cohorte,
+      section 9).
+      La pratique est franchement en tout ou rien : sur les cohortes de la
+      rentree, sept accompagnantes sont a 0 % et presque toutes les autres entre
+      95 et 100 %. Il n'y a quasiment personne au milieu -- etre a zero se voit
+      donc du premier coup d'oeil.
+      Les enfants sans accompagnante affectee sont exclus des deux series : ils
+      sont 596 sur la rentree, tous sans statut d'appel, et tireraient le
+      collectif vers le bas sans correspondre a personne.
+    visualization:
+      graph.dimensions: [Debut des appels]
+      graph.metrics: [Moi, Collectif]
+      graph.y_axis.title_text: "%"
+      graph.y_axis.auto_range: false
+      graph.y_axis.min: 0
+      graph.y_axis.max: 100
+    sql: |
+      with moi as (
+          select super_table.child_id,
+                 coalesce(super_table.has_booking_proposal_call0, 0) as propose,
+                 groups.date_call0_start::date                       as debut,
+                 groups.date_call0_end::date                         as fin
+          from fact.super_table
+          inner join dim.groups as groups on groups.group_name = super_table.cohort_name
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+            and nullif(trim(super_table.supporter_name), '') is not null
+            [[and {{accompagnante}}]]
+      ),
+      tous as (
+          select st.child_id,
+                 coalesce(st.has_booking_proposal_call0, 0) as propose,
+                 g.date_call0_start::date                   as debut,
+                 g.date_call0_end::date                     as fin
+          from fact.super_table as st
+          inner join dim.groups as g on g.group_name = st.cohort_name
+          where not coalesce(st.is_excluded_from_analytics, false)
+            and nullif(trim(st.supporter_name), '') is not null
+      ),
+      moi_coh as (
+          select debut, round(100.0 * avg(propose), 1) as taux
+          from moi where fin <= current_date and debut >= '2026-02-01' group by 1
+      ),
+      tous_coh as (
+          select debut, round(100.0 * avg(propose), 1) as taux
+          from tous where fin <= current_date and debut >= '2026-02-01' group by 1
+      )
+      select tous_coh.debut as "Debut des appels", moi_coh.taux as "Moi", tous_coh.taux as "Collectif"
+      from tous_coh
+      left join moi_coh on moi_coh.debut = tous_coh.debut
+      order by 1
+
+  - name: Mes familles a un appel KO
+    tab: Mes statistiques
+    display: table
+    row: 13
+    col: 12
+    size_x: 12
+    size_y: 6
+    filters: [accompagnante]
+    description: >
+      Mes familles dont le cycle n'est pas termine et qui ont deja UN appel
+      manque. Deux appels KO consecutifs valent desengagement automatique :
+      chacune de ces familles est a un appel rate de sortir du programme.
+      Un seul scan de super_table, le filtre pose une fois : les sessions sont
+      depivotees ensuite, sinon le filtre ne s'appliquerait qu'a la premiere
+      branche de l'union.
+      Comptage de familles et non d'enfants, contrairement au suivi financeur :
+      ce qu'on relance, c'est un foyer.
+    sql: |
+      with base as (
+          select super_table.family_id,
+                 super_table.call_0_status as s0, super_table.call1_status as s1,
+                 super_table.call2_status as s2,
+                 groups.date_call0_end::date as f0, groups.date_call1_end::date as f1,
+                 groups.date_call2_end::date as f2, groups.date_call3_end::date as fin_cycle
+          from fact.super_table
+          inner join dim.child  as child  on child.child_id  = super_table.child_id
+          inner join dim.groups as groups on groups.group_id = child.group_id
+          where not coalesce(super_table.is_excluded_from_analytics, false)
+            [[and {{accompagnante}}]]
+      ),
+      sessions as (
+          select family_id, 0 as n, s0 as statut, f0 as fin, fin_cycle from base
+          union all select family_id, 1, s1, f1, fin_cycle from base
+          union all select family_id, 2, s2, f2, fin_cycle from base
+      ),
+      par_famille_session as (
+          select family_id, n, max(statut) as statut, max(fin) as fin, max(fin_cycle) as fin_cycle
+          from sessions group by 1, 2
+      ),
+      par_famille as (
+          select family_id, max(fin_cycle) as fin_cycle,
+                 count_if(statut in ('KO', 'Numéro erroné', 'Ne pas appeler') and fin <= current_date) as nb_ko,
+                 max(case when statut in ('KO', 'Numéro erroné', 'Ne pas appeler') and fin <= current_date
+                          then n end)                                                                  as derniere_session_ko
+          from par_famille_session group by 1
+      )
+      select 'Appel ' || derniere_session_ko::varchar as "Appel manque",
+             count(*)                                 as "Familles a relancer"
+      from par_famille
+      where fin_cycle > current_date and nb_ko = 1
+      group by 1
+      order by 1

@@ -1,0 +1,246 @@
+# Suivi des engagements Fidelity : les trois indicateurs du contrat face a leurs
+# cibles, et la dynamique du dispositif de prise de RDV que Fidelity a finance.
+#
+# OU VIVENT LES REGLES. Pas ici. Les definitions sont dans fact.suivi_fidelity
+# et le detail dans fact.suivi_fidelity_enfant ; cette spec ne fait que lire la
+# couche analytics.kpi_fidelity / analytics.kpi_fidelity_cohorte. Pour
+# comprendre ou corriger un chiffre, c'est le modele dbt qu'il faut ouvrir.
+#
+# POURQUOI analytics ET PAS fact. Les deux portent les memes chiffres, mais la
+# vue analytics porte aussi les colonnes lisibles (statut, definition) et evite
+# de recopier ici une logique qui vit deja dans un modele -- deux definitions a
+# maintenir, c'est une derive garantie. Le schema ANALYTICS n'a ete ouvert a
+# METABASE_ROLE que le 2026-10-20 ; avant cela les cartes lisaient fact.*.
+#
+# LA MAILLE EST L'ENFANT, comme suivi_engagements_enfant et comme tout le
+# reporting financeur du depot : un engagement se contractualise en nombre
+# d'enfants a accompagner. La grille Fidelity dit « parents » et « families »,
+# mais c'est le vocabulaire du contrat, pas sa maille de comptage.
+#
+# LA BASELINE 2024 EST LE CONTROLE. Les definitions ont ete retrouvees en
+# cherchant ce qui redonne la grille deposee (54 / 44 / 66) ; le test dbt
+# test_suivi_fidelity_baseline echoue si l'une d'elles derive. Si un chiffre de
+# 2024 bouge ici, ce n'est pas le dashboard qu'il faut corriger.
+#
+# CE QU'IL NE FAUT PAS AJOUTER : une carte comparant le KPI 2 des enfants
+# « avec RDV » a celui des enfants « sans RDV ». L'ecart brut, de l'ordre de
+# 25 points, n'est pas l'effet du dispositif -- les familles qui prennent
+# rendez-vous sont deja celles qui repondent, et le groupe sans RDV devient un
+# residu negativement selectionne a mesure que l'adoption monte. L'effet reel
+# est d'environ +7 points (skill analyse-cohorte, section 9).
+
+name: Suivi Fidelity — engagements du contrat
+description: >
+  Les trois indicateurs du contrat Fidelity face à leurs cibles, et la
+  dynamique cohorte par cohorte du dispositif de prise de RDV. Définitions
+  dans fact.suivi_fidelity (dbt), calées sur la baseline 2024 de la grille
+  déposée (54 / 44 / 66) et protégées par le test
+  test_suivi_fidelity_baseline. Le KPI global compte la POSE d'une petite
+  mission, pas sa réussite, et ne lit que les cohortes au cycle achevé. Le KPI
+  1 mesure l'effort nécessaire pour joindre, pas la couverture : à ne jamais
+  présenter sans le KPI 2.
+
+collection: Claude/Suivi Fidelity
+database: snowflake_dw
+
+cards:
+
+  - name: Titre indicateurs
+    display: text
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 2
+    text: |
+      ## Les trois indicateurs du contrat
+      Dernière année mesurée. Les cibles et les écarts sont dans le tableau ci-dessous.
+
+  - name: Fidelity · Nouvelle habitude — dernière année
+    display: scalar
+    row: 2
+    col: 0
+    size_x: 8
+    size_y: 4
+    description: >
+      Part des familles à qui une petite mission a été posée au moins une fois,
+      sur l'effectif entier de la cohorte. Cohortes au cycle achevé uniquement.
+      Source : fact.suivi_fidelity (dbt).
+    visualization:
+      {
+        "scalar.field": "Nouvelle habitude"
+      }
+    sql: |
+      select valeur as "Nouvelle habitude"
+      from analytics.kpi_fidelity
+      where indicateur_code = 'KPI_GLOBAL' and valeur is not null
+      qualify row_number() over (order by annee desc) = 1
+
+  - name: Fidelity · Jointe du premier coup — dernière année
+    display: scalar
+    row: 2
+    col: 8
+    size_x: 8
+    size_y: 4
+    description: >
+      Appels 0 aboutis dès la 1ère tentative, parmi les familles jointes. Mesure
+      l'effort nécessaire, pas la couverture : à lire avec le KPI 2. Source :
+      fact.suivi_fidelity (dbt).
+    visualization:
+      {
+        "scalar.field": "Jointe du premier coup"
+      }
+    sql: |
+      select valeur as "Jointe du premier coup"
+      from analytics.kpi_fidelity
+      where indicateur_code = 'KPI_1' and valeur is not null
+      qualify row_number() over (order by annee desc) = 1
+
+  - name: Fidelity · Appel 0 complet — dernière année
+    display: scalar
+    row: 2
+    col: 16
+    size_x: 8
+    size_y: 4
+    description: >
+      Appels 0 menés en entier, parmi les familles joignables (hors numéro erroné
+      et « ne pas appeler »). Source : fact.suivi_fidelity (dbt).
+    visualization:
+      {
+        "scalar.field": "Appel 0 complet"
+      }
+    sql: |
+      select valeur as "Appel 0 complet"
+      from analytics.kpi_fidelity
+      where indicateur_code = 'KPI_2' and valeur is not null
+      qualify row_number() over (order by annee desc) = 1
+
+  - name: Fidelity · La grille, valeurs et cibles
+    display: table
+    row: 6
+    col: 0
+    size_x: 24
+    size_y: 6
+    description: >
+      Les trois indicateurs du contrat face à leurs cibles, par année de cohorte,
+      à la maille ENFANT — un engagement financeur se contractualise en nombre
+      d'enfants. 2024 est la baseline : l'écart y vaut zéro par construction. La
+      colonne Définition porte le numérateur et le dénominateur de chaque
+      indicateur. Source : analytics.kpi_fidelity (dbt).
+    visualization:
+      {}
+    sql: |
+      select
+          annee                       as "Année",
+          indicateur                  as "Indicateur",
+          valeur                      as "Valeur",
+          cible                       as "Cible",
+          ecart_points                as "Écart (pts)",
+          statut                      as "Statut",
+          enfants_mesures             as "Enfants mesurés",
+          pct_enfants_cycle_termine   as "% cohortes au cycle achevé",
+          definition                  as "Définition"
+      from analytics.kpi_fidelity
+      where annee >= 2024
+      order by indicateur_ordre, annee
+
+  - name: Titre dynamique
+    display: text
+    row: 12
+    col: 0
+    size_x: 24
+    size_y: 2
+    text: |
+      ## La dynamique
+      Une cohorte, c'est une quinzaine de jours d'appels. L'année n'en donne que la moyenne : le dispositif de prise de RDV monte en charge à partir d'avril 2026, et on voit ici ce qu'il déplace.
+
+  - name: Fidelity · La dynamique, cohorte par cohorte
+    display: line
+    row: 14
+    col: 0
+    size_x: 24
+    size_y: 7
+    description: >
+      Les deux indicateurs d'appel 0 et l'adoption du RDV, par cohorte 2025-2026.
+      Le dispositif démarre en février 2026. Ne pas comparer les familles avec et
+      sans RDV : l'écart brut n'est pas l'effet du dispositif (environ +7 points
+      réels). Source : analytics.kpi_fidelity_cohorte (dbt).
+    visualization:
+      {
+        "graph.dimensions": [
+          "Début des appels"
+        ],
+        "graph.metrics": [
+          "KPI 2 — appel 0 complet",
+          "KPI 1 — jointe du premier coup",
+          "Enfants ayant pris un RDV"
+        ],
+        "graph.x_axis.title_text": "Début des appels de la cohorte",
+        "graph.y_axis.title_text": "%",
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.min": 0,
+        "graph.y_axis.max": 100
+      }
+    sql: |
+      select
+          date_debut_appels               as "Début des appels",
+          cohorte                         as "Cohorte",
+          kpi2_appel0_complet             as "KPI 2 — appel 0 complet",
+          kpi1_jointe_1ere_tentative      as "KPI 1 — jointe du premier coup",
+          pct_rdv_pris                    as "Enfants ayant pris un RDV"
+      from analytics.kpi_fidelity_cohorte
+      where annee in (2025, 2026) and appels_0_termines
+      order by 1
+
+  - name: Fidelity · Adoption de la prise de RDV
+    display: line
+    row: 21
+    col: 0
+    size_x: 24
+    size_y: 7
+    description: >
+      Les deux leviers du dispositif : la proposition est une pratique
+      d'accompagnante, la transformation est la décision de la famille. Savoir
+      lequel bloque est tout l'intérêt de les séparer. Source :
+      analytics.kpi_fidelity_cohorte (dbt).
+    visualization:
+      {
+        "graph.dimensions": [
+          "Début des appels"
+        ],
+        "graph.metrics": [
+          "RDV proposé",
+          "Transformation",
+          "RDV pris"
+        ],
+        "graph.x_axis.title_text": "Début des appels de la cohorte",
+        "graph.y_axis.title_text": "%",
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.min": 0,
+        "graph.y_axis.max": 100
+      }
+    sql: |
+      select
+          date_debut_appels               as "Début des appels",
+          cohorte                         as "Cohorte",
+          pct_rdv_propose                 as "RDV proposé",
+          pct_transformation              as "Transformation",
+          pct_rdv_pris                    as "RDV pris"
+      from analytics.kpi_fidelity_cohorte
+      where annee = 2026 and appels_0_termines
+      order by 1
+
+  - name: Notes de lecture
+    display: text
+    row: 28
+    col: 0
+    size_x: 24
+    size_y: 6
+    text: |
+      ## Comment lire ces chiffres
+      **Le KPI global compte la pose de la mission, pas sa réussite.** La petite mission *est* l'habitude nouvelle, co-construite avec le parent sur une pratique du quotidien. Dénominateur : l'effectif entier de la cohorte — une famille jamais jointe n'en a pas reçu, et c'est un résultat, pas une donnée manquante.
+      
+      **Il ne lit que les cohortes au cycle achevé.** Une mission peut être posée à n'importe lequel des quatre appels : une cohorte qui vient de passer son appel 0 a un taux pas encore né, pas un mauvais taux. Sur 2026, 50 % toutes cohortes confondues contre 61 % sur les seules achevées.
+      
+      **Le KPI 1 mesure l'effort, pas la couverture.** Le champ « tentative » n'est renseigné que si l'appel a abouti : son dénominateur est celui des familles jointes. Il peut monter alors qu'on joint moins de familles — à lire avec le KPI 2 à côté.
+      
+      **Ne pas comparer les familles « avec RDV » aux familles « sans RDV ».** L'écart brut, de l'ordre de 25 points, n'est pas l'effet du dispositif : celles qui prennent rendez-vous sont déjà celles qui répondent. L'effet réel, mesuré à projection égale entre accompagnantes adoptantes et non-adoptantes, est d'environ **+7 points**.
