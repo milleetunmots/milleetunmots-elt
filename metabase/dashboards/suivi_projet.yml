@@ -26,6 +26,27 @@
 # est donc fixe en dur a la derniere annee portant un engagement. Le filtre
 # Financeur, lui, ne presente pas ce risque.
 #
+# DEUX ONGLETS. « Par financeur » repond a « ou en est-on », « Detail des
+# enfants » a « de qui parle-t-on ». Le filtre Financeur porte les deux : on
+# choisit un financeur en haut, on lit son chiffre puis sa liste.
+#
+# LE DETAIL VIENT DE fact.suivi_engagements_enfant, PAS DE fact.mecene. mecene
+# ne porte aucune colonne financeur -- il faudrait y rederiver le rattachement
+# source -> projet, alors que suivi_engagements_enfant est precisement le detail
+# de l'agregat affiche dans l'autre onglet, et porte project_label depuis le
+# 2026-10-20. Lire le detail ailleurs que dans le modele qui produit l'agregat,
+# c'est se garantir deux chiffres differents.
+#
+# LE DETAIL EXCLUT LES COHORTES EXCLUES (is_cohorte_exclue), et c'est ce qui le
+# fait reconcilier avec les tuiles : sans ce filtre on compte 6 483 entrees en
+# 2026 la ou l'agregat en affiche 6 020. Les 463 d'ecart sont des enfants de
+# cohortes sorties des analyses. Un onglet qui contredit l'autre est pire que
+# pas d'onglet du tout.
+#
+# LA VENTILATION N-1 / N : enfants_venus_de_n_moins_1 plus
+# enfants_entres_dans_annee font exactement enfants_en_cohorte (3 954 + 6 020 =
+# 9 974 en 2026). Les deux premiers sont en tuile, le total est dans le tableau.
+#
 # LES TROIS MESURES NE DISENT PAS LA MEME CHOSE et ne s'additionnent pas. C'est
 # le piege central de ce suivi, repris de l'en-tete de fact.suivi_engagements :
 #   enfants_entres      les entrees de l'annee, une unite chacune. C'est celle
@@ -60,6 +81,10 @@ description: >
 collection: Claude/Suivi de projet
 database: snowflake_dw
 
+tabs:
+  - Par financeur
+  - Detail des enfants
+
 filters:
   - slug: financeur
     display_name: Financeur
@@ -69,6 +94,7 @@ filters:
 cards:
 
   - name: Titre constat
+    tab: Par financeur
     display: heading
     row: 0
     col: 0
@@ -77,10 +103,11 @@ cards:
     text: L'annee en cours — ce qui a ete vendu, ce qui est entre
 
   - name: Projet · Quota vendu
+    tab: Par financeur
     display: scalar
     row: 1
     col: 0
-    size_x: 12
+    size_x: 8
     size_y: 4
     filters: [financeur]
     description: >
@@ -98,10 +125,11 @@ cards:
         [[and {{financeur}}]]
 
   - name: Projet · Enfants entres en cohorte
+    tab: Par financeur
     display: scalar
     row: 1
-    col: 12
-    size_x: 12
+    col: 8
+    size_x: 8
     size_y: 4
     filters: [financeur]
     description: >
@@ -121,7 +149,32 @@ cards:
                      where quota_vendu is not null)
         [[and {{financeur}}]]
 
+  - name: Projet · Enfants reportes de l'annee precedente
+    tab: Par financeur
+    display: scalar
+    row: 1
+    col: 16
+    size_x: 8
+    size_y: 4
+    filters: [financeur]
+    description: >
+      Enfants dont l'accompagnement etait deja en cours au 1er janvier, et qui
+      continuent dans l'annee. Ils ne comptent pas dans les entrees -- ils ont
+      ete comptes l'annee ou ils sont entres -- mais ils mobilisent des
+      accompagnantes et consomment des places.
+      Avec les entrees, ils font le nombre d'enfants dont une cohorte tourne
+      dans l'annee : 3 954 plus 6 020 font les 9 974 de 2026.
+    visualization:
+      scalar.field: Reportes de l'annee precedente
+    sql: |
+      select sum(enfants_venus_de_n_moins_1) as "Reportes de l'annee precedente"
+      from analytics.engagements_par_projet
+      where annee = (select max(annee) from analytics.engagements_par_projet
+                     where quota_vendu is not null)
+        [[and {{financeur}}]]
+
   - name: Titre financeurs
+    tab: Par financeur
     display: heading
     row: 4
     col: 0
@@ -130,6 +183,7 @@ cards:
     text: Par financeur — du plus gros engagement au plus petit
 
   - name: Projet · Le detail par financeur
+    tab: Par financeur
     display: table
     row: 5
     col: 0
@@ -149,6 +203,7 @@ cards:
           projet                          as "Financeur",
           quota_vendu                     as "Quota vendu",
           enfants_entres_dans_annee       as "Enfants entres en cohorte",
+          enfants_venus_de_n_moins_1      as "Reportes de l'annee precedente",
           enfants_en_cohorte              as "Enfants en cohorte, reports compris",
           round(places_consommees, 0)     as "Places consommees",
           enfants_touches                 as "Enfants touches dans l'annee"
@@ -160,6 +215,7 @@ cards:
       order by quota_vendu desc
 
   - name: Projet · Entrees en cohorte contre quota vendu
+    tab: Par financeur
     display: bar
     row: 13
     col: 0
@@ -187,6 +243,7 @@ cards:
       limit 12
 
   - name: Titre historique
+    tab: Par financeur
     display: heading
     row: 20
     col: 0
@@ -195,6 +252,7 @@ cards:
     text: Historique — a lire annee par annee, jamais en cumul
 
   - name: Projet · Entrees et portee par annee
+    tab: Par financeur
     display: bar
     filters: [financeur]
     row: 21
@@ -223,6 +281,7 @@ cards:
       order by 1
 
   - name: Notes de lecture projet
+    tab: Par financeur
     display: text
     row: 28
     col: 0
@@ -238,3 +297,58 @@ cards:
       **Un quota vendu vide n'est pas un zero.** Les projets sans engagement — bouche-a-oreille, reinscriptions directes, sources de test — n'ont pas de ligne dans la feuille du bureau. Leurs pourcentages d'atteinte sont vides et non nuls : un retard la ou il n'y a pas d'objectif n'existe pas.
 
       **Aucun taux d'atteinte n'est affiche, c'est voulu.** Les deux nombres sont cote a cote et chacun tire sa conclusion : un pourcentage transformerait un constat en jugement, sans dire si le retard est rattrapable. La vue `analytics.engagements_par_projet` porte `pct_entrees` et `ecart_points` si le besoin revient.
+
+  - name: Titre detail enfants
+    tab: Detail des enfants
+    display: heading
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Choisir un financeur en haut de page pour voir ses enfants un par un
+
+  - name: Projet · Detail des enfants du financeur
+    tab: Detail des enfants
+    display: table
+    row: 1
+    col: 0
+    size_x: 24
+    size_y: 14
+    filters: [financeur]
+    description: >
+      Une ligne par enfant rattache au financeur sur l'annee en cours, du plus
+      recemment entre au plus ancien. Meme perimetre que l'onglet precedent :
+      les cohortes exclues des analyses n'y figurent pas, de sorte que le nombre
+      de lignes « Entre dans l'annee » retombe sur la tuile.
+      La colonne Rattachement reprend la classification du modele et non une
+      regle ecrite ici : entre dans l'annee, reporte de l'annee precedente, ou
+      inscrit sans cohorte encore demarree.
+      Le filtre Financeur arrive en portee par une jointure sur la vue
+      d'agregat : c'est ce qui permet qu'un seul filtre serve les deux onglets.
+    sql: |
+      select
+          e.child_id                          as "Enfant",
+          e.cohorte                           as "Cohorte",
+          case e.rattachement_temporel
+              when 'annee_courante'   then 'Entre dans l''annee'
+              when 'annee_precedente' then 'Reporte de l''annee precedente'
+              when 'annee_suivante'   then 'Inscrit, cohorte l''annee suivante'
+              when 'non_planifie'     then 'Inscrit, cohorte non planifiee'
+              when 'non_accompagne'   then 'Inscrit, jamais accompagne'
+          end                                 as "Rattachement",
+          e.date_debut_accompagnement         as "Debut d'accompagnement",
+          e.group_status                      as "Statut",
+          e.source_name                       as "Source d'inscription",
+          e.famille_departement               as "Departement",
+          e.child_age_in_month                as "Tranche d'age",
+          round(e.quota_annee, 2)             as "Place consommee dans l'annee",
+          e.deux_appels_ok                    as "Deux appels OK"
+      from fact.suivi_engagements_enfant as e
+      inner join analytics.engagements_par_projet
+              on engagements_par_projet.project_code = e.project_code
+             and engagements_par_projet.annee        = e.annee_suivi
+      where e.annee_suivi = (select max(annee) from analytics.engagements_par_projet
+                             where quota_vendu is not null)
+        and not coalesce(e.is_cohorte_exclue, false)
+        [[and {{financeur}}]]
+      order by e.date_debut_accompagnement desc nulls last
