@@ -62,8 +62,12 @@ cards:
     size_x: 8
     size_y: 4
     description: >
-      Part des familles à qui une petite mission a été posée au moins une fois,
-      sur l'effectif entier de la cohorte. Cohortes au cycle achevé uniquement.
+      Part des ENFANTS à qui une petite mission a été posée au moins une fois,
+      sur l'effectif entier de la cohorte, cohortes au cycle achevé uniquement.
+      Reprend la métrique maison [OLD] « Nouvelles habitudes » : même numérateur
+      que la [NEW], mais dénominateur sans filtre. La [NEW], qui ne retient que
+      les enfants joints à l'appel 0 ou 1, donne 69,2 % en 2024 contre 54 à la
+      grille Fidelity — c'est la [OLD] qui a servi au dépôt du contrat.
       Source : fact.suivi_fidelity (dbt).
     visualization:
       {
@@ -82,8 +86,9 @@ cards:
     size_x: 8
     size_y: 4
     description: >
-      Appels 0 aboutis dès la 1ère tentative, parmi les familles jointes. Mesure
-      l'effort nécessaire, pas la couverture : à lire avec le KPI 2. Source :
+      Appels 0 aboutis dès la 1ère tentative, parmi les ENFANTS joints. Mesure
+      l'effort nécessaire pour joindre, pas la couverture : il peut monter alors
+      qu'on joint moins d'enfants, donc à lire avec le KPI 2 à côté. Source :
       fact.suivi_fidelity (dbt).
     visualization:
       {
@@ -102,8 +107,9 @@ cards:
     size_x: 8
     size_y: 4
     description: >
-      Appels 0 menés en entier, parmi les familles joignables (hors numéro erroné
-      et « ne pas appeler »). Source : fact.suivi_fidelity (dbt).
+      Appels 0 menés en entier, parmi les ENFANTS joignables — statut d'appel
+      renseigné, hors numéro erroné et « ne pas appeler ». Source :
+      fact.suivi_fidelity (dbt).
     visualization:
       {
         "scalar.field": "Appel 0 complet"

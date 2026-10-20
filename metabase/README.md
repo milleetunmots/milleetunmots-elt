@@ -25,7 +25,10 @@ python admin/metabase/apply_dashboard.py metabase/dashboards/accompagnantes.yml 
 
 Le hash sert à deux choses : on ne peut pas appliquer un plan qu'on n'a pas lu,
 et si la spec ou Metabase ont bougé entre le plan et l'apply, le hash ne
-correspond plus et l'apply refuse.
+correspond plus et l'apply refuse. Il couvre le **contenu** de chaque carte —
+SQL, description, visualisation, position — et pas seulement les noms : sans
+quoi retoucher une description laisserait un plan lu la veille applicable à une
+spec qui a changé depuis.
 
 ## Un dossier par dashboard
 

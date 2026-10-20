@@ -209,7 +209,8 @@ def construit_plan(spec, mb, hors_ligne):
     if hors_ligne:
         for carte in spec["cards"]:
             if carte.get("display") not in VIRTUELLES:
-                plan["cartes"].append({"nom": carte["name"], "action": "?"})
+                plan["cartes"].append({"nom": carte["name"], "action": "?",
+                                       "empreinte": empreinte_carte(carte)})
         return plan, None, None, None, {}
 
     collection_id = resout_collection(mb, spec["collection"])
@@ -218,12 +219,29 @@ def construit_plan(spec, mb, hors_ligne):
     connues = cartes_existantes(mb, collection_id)
     for carte in spec["cards"]:
         if carte.get("display") in VIRTUELLES:
+            plan["cartes"].append({"nom": carte["name"], "action": "texte",
+                                   "empreinte": empreinte_carte(carte)})
             continue
         plan["cartes"].append({"nom": carte["name"],
-                               "action": "mise a jour" if carte["name"] in connues else "creation"})
+                               "action": "mise a jour" if carte["name"] in connues else "creation",
+                               "empreinte": empreinte_carte(carte)})
     plan["dashboard_action"] = ("mise a jour" if spec["name"] in dashboards_existants(mb, collection_id)
                                 else "creation")
     return plan, collection_id, base_id, champs, connues
+
+
+def empreinte_carte(carte):
+    """Ce qui, dans une carte, doit invalider un plan deja affiche.
+
+    Le hash du plan ne couvrait d'abord que les noms et les actions : modifier
+    le SQL ou la description d'une carte laissait le hash inchange, donc un plan
+    lu la veille restait applicable a une spec qui avait change entre-temps.
+    C'est exactement ce que le hash est cense empecher.
+    """
+    corps = {cle: carte.get(cle) for cle in
+             ("sql", "text", "description", "display", "visualization", "filters", "tab",
+              "row", "col", "size_x", "size_y")}
+    return hashlib.sha256(json.dumps(corps, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:10]
 
 
 def empreinte(plan):
@@ -240,6 +258,8 @@ def affiche_plan(plan, spec):
         print("Filtre      %s -> %s" % (filtre["display_name"], filtre["dimension"]))
     print()
     for carte in plan["cartes"]:
+        if carte["action"] == "texte":
+            continue
         print("  %-12s %s" % (carte["action"], carte["nom"]))
     print()
 
