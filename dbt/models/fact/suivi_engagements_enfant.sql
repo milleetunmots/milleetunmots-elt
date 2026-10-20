@@ -114,6 +114,7 @@ enfant as (
         c.child_id,
         c.family_id,
         coalesce(sp.project_code, 'SANS_SOURCE') as project_code,
+        coalesce(sp.project_label, 'Source non renseignee') as project_label,
         cs.source_id,
         sp.source_name,
         sp.channel                      as source_channel,
@@ -298,6 +299,7 @@ select
         when v.categorie_suivi like 'E.%' then 'non_accompagne'
     end as rattachement_temporel,
     v.project_code,
+    v.project_label,
     v.source_id,
     v.source_name,
     v.source_channel,

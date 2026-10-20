@@ -25,8 +25,14 @@ with sources as (
     select * from {{ ref('stg_1001mots_app__sources') }}
 ),
 
+-- Identite du projet, rattachee au code et non a l'annee : la feuille du bureau
+-- ne porte qu'une annee, le libelle doit valoir pour toutes.
 engagements as (
-    select distinct project_code from {{ ref('stg_projects__engagements') }}
+    select
+        project_code,
+        max_by(project_label, annee) as project_label
+    from {{ ref('stg_projects__engagements') }}
+    group by project_code
 ),
 
 mapped as (
@@ -72,6 +78,15 @@ select
         when e.project_code is not null then m.project_code_calcule
         else 'AUTRES'
     end as project_code,
+    -- libelle lisible du financeur, pour que le detail se lise sans jointure.
+    -- Les trois codes hors perimetre n'ont pas de ligne dans la feuille : ils
+    -- portent leur propre libelle.
+    case
+        when m.project_code_calcule = 'TEST'   then 'Source de test'
+        when m.project_code_calcule = 'BAO'    then 'Bouche-a-oreille, sans financeur'
+        when e.project_label is not null       then e.project_label
+        else 'Autres petits partenaires'
+    end as project_label,
     -- vrai quand la source ne retombe sur aucune ligne de la feuille du bureau :
     -- a surveiller, c'est le signe d'un partenariat a declarer ou d'un departement
     -- nouveau

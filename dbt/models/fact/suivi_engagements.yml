@@ -270,6 +270,11 @@ models:
         description: Financeur de la source de l'enfant, via source_project.
         tests:
           - not_null
+      - name: project_label
+        description: >
+          Le même en lisible, pour sortir une liste d'enfants par financeur sans
+          jointure. Un enfant n'appartient qu'à un seul projet, toutes années
+          confondues : le rattachement vient de sa source, qui ne change pas.
       - name: annee_suivi
         description: Année civile pour laquelle cet enfant est compté.
         tests:
@@ -387,6 +392,11 @@ models:
         description: Code du projet financeur, ou 'TEST', 'BAO', 'AUTRES'.
         tests:
           - not_null
+      - name: project_label
+        description: >
+          Libellé lisible du financeur, repris de la feuille du bureau et
+          rattaché au code plutôt qu'à l'année. Les codes hors périmètre portent
+          leur propre libellé.
       - name: is_hors_feuille
         description: >
           Le code calculé ne correspond à aucune ligne de la feuille du bureau.
