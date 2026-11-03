@@ -47,7 +47,7 @@ filters:
     type: string/=
     dimension: ANALYTICS.SOURCES_A_RELANCER.STATUT
   # Les listes le positionnent aussi au clic (card_settings). Ses valeurs
-  # viennent de toutes les colonnes branchees, dont la vue mensuelle qui porte
+  # viennent de toutes les colonnes branchees, dont la vue hebdomadaire qui porte
   # TOUTES les sources du perimetre : on peut regarder n'importe laquelle, meme
   # une source active -- les listes sont alors vides, la courbe non.
   - slug: source
@@ -71,6 +71,7 @@ cards:
       l'annee -- peuvent l'etre.
     visualization:
       scalar.field: Inactives
+      card.title: Inactives
     sql: |
       select count(*) as "Inactives"
       from analytics.sources_a_relancer
@@ -92,6 +93,7 @@ cards:
       Regle non backtestee, a juger a l'usage.
     visualization:
       scalar.field: En baisse
+      card.title: En baisse
     sql: |
       select count(*) as "En baisse"
       from analytics.sources_a_relancer
@@ -111,6 +113,7 @@ cards:
       inscription : un partenariat ouvert qui n'a jamais pris.
     visualization:
       scalar.field: Jamais demarrees
+      card.title: Jamais démarrées
     sql: |
       select count(*) as "Jamais demarrees"
       from analytics.sources_a_relancer
@@ -124,7 +127,7 @@ cards:
     col: 0
     size_x: 24
     size_y: 1
-    text: Passées inactives ces 7 derniers jours — la carte de l'alerte hebdomadaire
+    text: Alerte de la semaine · sources passées inactives
 
   - name: Sources · Nouvelles sources inactives (7 derniers jours)
     display: table
@@ -140,6 +143,7 @@ cards:
       sans eux. Cliquer une source trace ses inscriptions dans la courbe du bas.
     filters: [financeur, source]
     card_settings:
+      card.title: Nouvelles sources inactives, 7 derniers jours
       column_settings:
         '["name","Source"]':
           click_behavior:
@@ -178,7 +182,7 @@ cards:
     col: 0
     size_x: 24
     size_y: 1
-    text: Toutes les sources à relancer — cliquer une source pour tracer ses inscriptions
+    text: Toutes les sources à relancer · cliquer un nom pour voir sa courbe
 
   - name: Sources · Liste a relancer
     display: table
@@ -193,8 +197,9 @@ cards:
       L'email est celui du dernier professionnel ayant inscrit via la source ;
       il n'est saisi que depuis aout 2026, d'ou les nombreux vides -- passer
       alors par le referent du financeur. Cliquer une source trace ses
-      inscriptions dans la courbe du bas.
+      inscriptions dans la courbe ci-dessus.
     card_settings:
+      card.title: Liste à relancer
       column_settings:
         '["name","Source"]':
           click_behavior:
@@ -239,7 +244,7 @@ cards:
     col: 0
     size_x: 24
     size_y: 1
-    text: Inscriptions par semaine depuis le début de l'année, contre l'année précédente — choisir une source dans le filtre ou cliquer son nom dans un tableau
+    text: Inscriptions par semaine · année en cours et précédente
 
   - name: Sources · Inscriptions de la source par semaine
     display: combo
@@ -267,6 +272,7 @@ cards:
       que les statuts (hors reinscriptions, enfants supprimes, test et
       bouche-a-oreille).
     visualization:
+      card.title: Inscriptions par semaine
       graph.dimensions: [Semaine]
       graph.metrics: ["Annee en cours", "Annee precedente"]
       graph.x_axis.title_text: ""
