@@ -154,9 +154,12 @@ cards:
                 id: 36cd38f4
                 source: {type: column, id: Source, name: Source}
                 target: {type: parameter, id: 36cd38f4}
+        '["name","Pourquoi"]':
+          text_wrapping: true
     sql: |
       select
           source                       as "Source",
+          motif                        as "Pourquoi",
           financeur                    as "Financeur",
           email_contact_principal      as "Email du dernier pro",
           emails_contacts              as "Tous les emails",
@@ -195,6 +198,8 @@ cards:
     description: >
       Une ligne par source a relancer, des inactives aux jamais demarrees, et
       dans chaque statut de la plus volumineuse l'an dernier a la plus petite.
+      La colonne Pourquoi dit en une phrase, chiffres de la source a l'appui,
+      ce qui l'a fait remonter.
       L'email est celui du dernier professionnel ayant inscrit via la source ;
       il n'est saisi que depuis aout 2026, d'ou les nombreux vides -- passer
       alors par le referent du financeur. Cliquer une source trace ses
@@ -210,10 +215,17 @@ cards:
                 id: 36cd38f4
                 source: {type: column, id: Source, name: Source}
                 target: {type: parameter, id: 36cd38f4}
+        '["name","Pourquoi"]':
+          text_wrapping: true
     sql: |
       select
-          statut                       as "Statut",
+          case statut
+              when 'inactive' then 'Inactive'
+              when 'en_baisse' then 'En baisse'
+              when 'jamais_demarree' then 'Jamais démarrée'
+          end                          as "Statut",
           source                       as "Source",
+          motif                        as "Pourquoi",
           financeur                    as "Financeur",
           email_contact_principal      as "Email du dernier pro",
           emails_contacts              as "Tous les emails",
