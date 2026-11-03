@@ -47,7 +47,7 @@ filters:
     type: string/=
     dimension: ANALYTICS.SOURCES_A_RELANCER.STATUT
   # Les listes le positionnent aussi au clic (card_settings). Ses valeurs
-  # viennent de toutes les colonnes branchees, dont la vue hebdomadaire qui porte
+  # viennent de toutes les colonnes branchees, dont la vue mensuelle qui porte
   # TOUTES les sources du perimetre : on peut regarder n'importe laquelle, meme
   # une source active -- les listes sont alors vides, la courbe non.
   - slug: source
@@ -244,41 +244,40 @@ cards:
     col: 0
     size_x: 24
     size_y: 1
-    text: Inscriptions par semaine · année en cours et précédente
+    text: Inscriptions par mois · année en cours et précédente
 
-  - name: Sources · Inscriptions de la source par semaine
+  - name: Sources · Inscriptions de la source par mois
     display: combo
     row: 9
     col: 0
     size_x: 24
     size_y: 8
     filters: [financeur, statut, source]
-    # la courbe lit la vue hebdomadaire : les trois filtres y sont rebranches
+    # la courbe lit la vue mensuelle : les trois filtres y sont rebranches
     dimensions:
-      financeur: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.FINANCEUR
-      statut: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.STATUT
-      source: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.SOURCE
+      financeur: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.FINANCEUR
+      statut: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.STATUT
+      source: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.SOURCE
     description: >
-      Inscriptions hebdomadaires de la source choisie depuis la premiere
-      semaine de l'annee (barres, semaines ISO du lundi), contre la meme
-      semaine de l'annee precedente (barres grises, 52 semaines plus tot) pour lire sa
-      saisonnalite propre. La semaine 1 peut commencer fin decembre. Une source
-      plus recente s'affiche depuis sa premiere inscription, sans barre grise avant
-      son premier anniversaire. Sans source choisie, la courbe
-      somme les sources retenues par les filtres Financeur et Statut -- toutes,
-      si aucun n'est choisi. Le statut est celui du jour. Les semaines sans
-      inscription sont a 0 et non absentes : un trou se voit. La semaine en
-      cours n'est pas tracee : partielle, elle se lirait comme une chute. Meme definition d'une inscription
-      que les statuts (hors reinscriptions, enfants supprimes, test et
+      Inscriptions mensuelles de la source choisie depuis janvier (barres
+      bleues), contre le meme mois de l'annee precedente (barres grises) pour
+      lire sa saisonnalite propre. Une source plus recente s'affiche depuis sa
+      premiere inscription, sans barre grise avant son premier anniversaire.
+      Sans source choisie, la courbe somme les sources retenues par les
+      filtres Financeur et Statut -- toutes, si aucun n'est choisi. Le statut
+      est celui du jour. Les mois sans inscription sont a 0 et non absents :
+      un trou se voit. Le mois en cours n'est pas trace : partiel, il se
+      lirait comme une chute. Meme definition d'une inscription que les
+      statuts (hors reinscriptions, enfants supprimes, test et
       bouche-a-oreille).
     visualization:
-      card.title: Inscriptions par semaine
-      graph.dimensions: [Semaine]
+      card.title: Inscriptions par mois
+      graph.dimensions: [Mois]
       graph.metrics: ["Annee en cours", "Annee precedente"]
       graph.x_axis.title_text: ""
       graph.x_axis.scale: timeseries
       graph.y_axis.title_text: Enfants inscrits
-      graph.show_values: false
+      graph.show_values: true
       legend.is_reversed: false
       series_settings:
         "Annee en cours":
@@ -291,18 +290,17 @@ cards:
           title: Année précédente
     sql: |
       select
-          semaine                      as "Semaine",
+          mois                         as "Mois",
           sum(nb_inscriptions)         as "Annee en cours",
           sum(nb_inscriptions_n1)      as "Annee precedente"
-      from analytics.inscriptions_sources_semaine
-      -- annee ISO : la semaine 1 est celle du premier jeudi, sans semaine coupee
-      where yearofweekiso(semaine) = yearofweekiso(current_date)
-        and not is_semaine_en_cours
+      from analytics.inscriptions_sources_mois
+      where year(mois) = year(current_date)
+        and not is_mois_en_cours
         [[and {{financeur}}]]
         [[and {{statut}}]]
         [[and {{source}}]]
-      group by semaine
-      order by semaine
+      group by mois
+      order by mois
 
   - name: Note methode
     display: text

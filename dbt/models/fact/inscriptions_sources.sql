@@ -3,7 +3,7 @@
 -- Les inscriptions par source : une ligne par enfant inscrit via une source.
 -- C'est la definition d'une inscription pour tout le suivi de l'activite des
 -- sources -- fact.activite_sources en tire ses statuts, et
--- analytics.inscriptions_sources_semaine sa courbe. Un seul endroit, pour que le
+-- analytics.inscriptions_sources_mois sa courbe. Un seul endroit, pour que le
 -- graphique d'une source retombe toujours sur les chiffres de son statut.
 --
 -- Perimetre : hors reinscriptions, hors enfants supprimes, hors sources de test

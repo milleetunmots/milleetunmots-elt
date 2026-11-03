@@ -53,22 +53,21 @@ models:
       - name: mois_les_plus_actifs
         description: Les trois mois de l'année où la source inscrit le plus, tout historique confondu.
 
-  - name: inscriptions_sources_semaine
+  - name: inscriptions_sources_mois
     description: >
-      Inscriptions hebdomadaires de chaque source (semaines du lundi), de sa
-      première semaine à la semaine en cours, semaines vides à 0. Sert la courbe
-      « Inscriptions de la source par semaine » du dashboard Sources à
-      relancer, qui la borne à l'année en cours. Même définition d'une
-      inscription que fact.activite_sources (fact.inscriptions_sources).
+      Inscriptions mensuelles de chaque source, de son premier mois au mois en
+      cours, mois vides à 0. Sert la courbe « Inscriptions de la source par
+      mois » du dashboard Sources à relancer, qui la borne à l'année en cours.
+      Même définition d'une inscription que fact.activite_sources
+      (fact.inscriptions_sources).
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns: ['source_id', 'semaine']
+          combination_of_columns: ['source_id', 'mois']
     columns:
       - name: statut
         description: Statut d'alerte du jour de la source, pour filtrer la courbe comme les listes.
       - name: nb_inscriptions_n1
         description: >
-          La même semaine un an plus tôt (52 semaines, même jour de la semaine) ;
-          null avant la première semaine de la source.
-      - name: is_semaine_en_cours
-        description: La semaine en cours est partielle, à ne pas lire comme une baisse.
+          Le même mois un an plus tôt ; null avant le premier mois de la source.
+      - name: is_mois_en_cours
+        description: Le mois en cours est partiel, à ne pas lire comme une baisse.
