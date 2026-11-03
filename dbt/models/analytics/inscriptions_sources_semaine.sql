@@ -13,7 +13,11 @@
 -- semaine), pour lire la saisonnalite propre a la source sans calcul cote
 -- Metabase.
 --
--- Tout l'historique est la ; la fenetre de 15 mois est posee par la carte. La
+-- Le lundi est calcule par dayofweekiso, pas par date_trunc(week) : celui-ci
+-- suit le parametre WEEK_START de la session qui lit la vue, et Metabase y
+-- impose le dimanche.
+--
+-- Tout l'historique est la ; la fenetre (annee en cours) est posee par la carte. La
 -- grille partant de la premiere inscription, une source plus recente s'affiche
 -- naturellement depuis son debut.
 --
@@ -37,7 +41,7 @@ sources as (
         source_id,
         source_name,
         project_label,
-        date_trunc(week, min(date_inscription)) as premiere_semaine
+        min({{ lundi('date_inscription') }}) as premiere_semaine
     from inscriptions
     where source_id in (select source_id from activite
                         where channel in ('pmi', 'local_partner'))
@@ -45,7 +49,7 @@ sources as (
 ),
 
 semaines as (
-    select distinct date_trunc(week, full_date) as semaine
+    select distinct {{ lundi('full_date') }} as semaine
     from {{ ref('calendar') }}
     where full_date <= current_date
 ),
@@ -58,9 +62,9 @@ grille as (
 ),
 
 par_semaine as (
-    select source_id, date_trunc(week, date_inscription) as semaine, count(*) as nb
+    select source_id, {{ lundi('date_inscription') }} as semaine, count(*) as nb
     from inscriptions
-    group by source_id, date_trunc(week, date_inscription)
+    group by source_id, {{ lundi('date_inscription') }}
 )
 
 select
@@ -73,7 +77,7 @@ select
     -- null avant la premiere semaine de la source : pas d'historique, pas zero
     iff(dateadd(week, -52, g.semaine) >= g.premiere_semaine,
         coalesce(p_n1.nb, 0), null)        as nb_inscriptions_n1,
-    g.semaine = date_trunc(week, current_date) as is_semaine_en_cours
+    g.semaine = {{ lundi('current_date') }} as is_semaine_en_cours
 from grille as g
 left join par_semaine as p
     on p.source_id = g.source_id

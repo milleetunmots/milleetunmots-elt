@@ -239,7 +239,7 @@ cards:
     col: 0
     size_x: 24
     size_y: 1
-    text: Inscriptions par semaine, 15 derniers mois — choisir une source dans le filtre ou cliquer son nom dans un tableau
+    text: Inscriptions par semaine depuis le début de l'année, contre l'année précédente — choisir une source dans le filtre ou cliquer son nom dans un tableau
 
   - name: Sources · Inscriptions de la source par semaine
     display: combo
@@ -254,10 +254,12 @@ cards:
       statut: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.STATUT
       source: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.SOURCE
     description: >
-      Inscriptions hebdomadaires de la source choisie (barres, semaines du
-      lundi), et la meme semaine un an plus tot (ligne) pour lire sa
-      saisonnalite propre. Fenetre de 15 mois au plus : une source plus recente
-      s'affiche depuis sa premiere inscription. Sans source choisie, la courbe
+      Inscriptions hebdomadaires de la source choisie depuis la premiere
+      semaine de l'annee (barres, semaines ISO du lundi), contre la meme
+      semaine de l'annee precedente (ligne, 52 semaines plus tot) pour lire sa
+      saisonnalite propre. La semaine 1 peut commencer fin decembre. Une source
+      plus recente s'affiche depuis sa premiere inscription, sans ligne avant
+      son premier anniversaire. Sans source choisie, la courbe
       somme les sources retenues par les filtres Financeur et Statut -- toutes,
       si aucun n'est choisi. Le statut est celui du jour. Les semaines sans
       inscription sont a 0 et non absentes : un trou se voit. La semaine en
@@ -266,31 +268,32 @@ cards:
       bouche-a-oreille).
     visualization:
       graph.dimensions: [Semaine]
-      graph.metrics: [Inscriptions, "Meme semaine, un an plus tot"]
+      graph.metrics: ["Annee en cours", "Annee precedente"]
       graph.x_axis.title_text: ""
       graph.x_axis.scale: timeseries
       graph.y_axis.title_text: Enfants inscrits
       graph.show_values: false
       legend.is_reversed: false
       series_settings:
-        Inscriptions:
+        "Annee en cours":
           display: bar
           color: "#509EE3"
-          title: Inscriptions de la semaine
-        "Meme semaine, un an plus tot":
+          title: Année en cours
+        "Annee precedente":
           display: line
           color: "#A6AEB8"
           line.style: dashed
           line.marker_enabled: false
           line.interpolate: monotone
-          title: Même semaine, un an plus tôt
+          title: Année précédente
     sql: |
       select
           semaine                      as "Semaine",
-          sum(nb_inscriptions)         as "Inscriptions",
-          sum(nb_inscriptions_n1)      as "Meme semaine, un an plus tot"
+          sum(nb_inscriptions)         as "Annee en cours",
+          sum(nb_inscriptions_n1)      as "Annee precedente"
       from analytics.inscriptions_sources_semaine
-      where semaine >= date_trunc(week, dateadd(month, -15, current_date))
+      -- annee ISO : la semaine 1 est celle du premier jeudi, sans semaine coupee
+      where yearofweekiso(semaine) = yearofweekiso(current_date)
         and not is_semaine_en_cours
         [[and {{financeur}}]]
         [[and {{statut}}]]

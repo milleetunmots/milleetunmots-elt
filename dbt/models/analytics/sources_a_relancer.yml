@@ -58,7 +58,7 @@ models:
       Inscriptions hebdomadaires de chaque source (semaines du lundi), de sa
       première semaine à la semaine en cours, semaines vides à 0. Sert la courbe
       « Inscriptions de la source par semaine » du dashboard Sources à
-      relancer, qui la borne aux 15 derniers mois. Même définition d'une
+      relancer, qui la borne à l'année en cours. Même définition d'une
       inscription que fact.activite_sources (fact.inscriptions_sources).
     tests:
       - dbt_utils.unique_combination_of_columns:
