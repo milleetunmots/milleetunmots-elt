@@ -57,7 +57,7 @@ models:
     description: >
       Inscriptions mensuelles de chaque source, de son premier mois au mois en
       cours, mois vides à 0. Sert la courbe « Inscriptions de la source par
-      mois » du dashboard Sources à relancer, qui la borne à l'année en cours.
+      mois » du dashboard Sources à relancer, qui la borne à l'année en cours, ou aux 6 derniers mois si c'est plus long.
       Même définition d'une inscription que fact.activite_sources
       (fact.inscriptions_sources).
     tests:

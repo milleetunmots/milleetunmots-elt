@@ -8,8 +8,8 @@
 -- Porte aussi le meme mois un an plus tot, pour lire la saisonnalite propre a
 -- la source sans calcul cote Metabase.
 --
--- Tout l'historique est la ; la fenetre (annee en cours) est posee par la
--- carte. La grille partant de la premiere inscription, une source plus recente
+-- Tout l'historique est la ; la fenetre (depuis janvier, ou 6 mois si
+-- c'est plus long) est posee par la carte. La grille partant de la premiere inscription, une source plus recente
 -- s'affiche naturellement depuis son debut.
 --
 -- Toutes les PMI et partenaires locaux y sont, pas seulement ceux a relancer :

@@ -244,7 +244,7 @@ cards:
     col: 0
     size_x: 24
     size_y: 1
-    text: Inscriptions par mois · année en cours et précédente
+    text: Inscriptions par mois · comparées au même mois un an plus tôt
 
   - name: Sources · Inscriptions de la source par mois
     display: combo
@@ -259,9 +259,11 @@ cards:
       statut: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.STATUT
       source: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.SOURCE
     description: >
-      Inscriptions mensuelles de la source choisie depuis janvier (barres
-      bleues), contre le meme mois de l'annee precedente (barres grises) pour
-      lire sa saisonnalite propre. Une source plus recente s'affiche depuis sa
+      Inscriptions mensuelles de la source choisie (barres bleues), contre le
+      meme mois un an plus tot (barres grises) pour lire sa saisonnalite
+      propre. Fenetre : depuis janvier, ou les 6 derniers mois complets si
+      c'est plus long -- en debut d'annee, la courbe ne se reduit pas a un ou
+      deux mois. Une source plus recente s'affiche depuis sa
       premiere inscription, sans barre grise avant son premier anniversaire.
       Sans source choisie, la courbe somme les sources retenues par les
       filtres Financeur et Statut -- toutes, si aucun n'est choisi. Le statut
@@ -273,28 +275,30 @@ cards:
     visualization:
       card.title: Inscriptions par mois
       graph.dimensions: [Mois]
-      graph.metrics: ["Annee en cours", "Annee precedente"]
+      graph.metrics: [Inscriptions, "Meme mois, un an plus tot"]
       graph.x_axis.title_text: ""
       graph.x_axis.scale: timeseries
       graph.y_axis.title_text: Enfants inscrits
       graph.show_values: true
       legend.is_reversed: false
       series_settings:
-        "Annee en cours":
+        Inscriptions:
           display: bar
           color: "#509EE3"
-          title: Année en cours
-        "Annee precedente":
+          title: Inscriptions
+        "Meme mois, un an plus tot":
           display: bar
           color: "#C9CED6"
-          title: Année précédente
+          title: Même mois, un an plus tôt
     sql: |
       select
           mois                         as "Mois",
-          sum(nb_inscriptions)         as "Annee en cours",
-          sum(nb_inscriptions_n1)      as "Annee precedente"
+          sum(nb_inscriptions)         as "Inscriptions",
+          sum(nb_inscriptions_n1)      as "Meme mois, un an plus tot"
       from analytics.inscriptions_sources_mois
-      where year(mois) = year(current_date)
+      -- depuis janvier, ou les 6 derniers mois complets si c'est plus long
+      where mois >= least(date_trunc(year, current_date),
+                          dateadd(month, -6, date_trunc(month, current_date)))
         and not is_mois_en_cours
         [[and {{financeur}}]]
         [[and {{statut}}]]
