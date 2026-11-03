@@ -28,8 +28,12 @@
 --   dormante         rien depuis un an ou plus : relance deja trop tardive
 --   inactive         silence >= seuil_silence_jours (signal backteste)
 --   en_baisse        inscrit toujours, mais moins de 40 % de ses inscriptions
---                    des memes 180 jours l'an dernier (au moins 10 alors).
---                    Comparer a la meme periode neutralise la saisonnalite.
+--                    des memes 180 jours l'an dernier, OU des memes 90 jours
+--                    (au moins 10 alors, sur la fenetre en cause). Comparer a
+--                    la meme periode neutralise la saisonnalite. Les 90 jours
+--                    attrapent une chute recente que 180 jours diluent dans un
+--                    printemps normal (PMI Villeneuve-la-Garenne, 2026-11-03 :
+--                    0,51 sur 180 jours, 0,21 sur 90).
 --                    Regle NON backtestee : a juger a l'usage.
 --   occasionnelle    moins de 4 jours d'inscription sur l'annee
 --   active           le reste
@@ -66,6 +70,8 @@ activite as (
                            date_inscription, null))                         as nb_jours_actifs_365j,
         count_if(date_inscription > dateadd(day, -365, current_date))       as nb_inscriptions_365j,
         count_if(date_inscription > dateadd(day, -90, current_date))        as nb_inscriptions_90j,
+        count_if(date_inscription >  dateadd(day, -455, current_date)
+             and date_inscription <= dateadd(day, -365, current_date))      as nb_inscriptions_90j_n1,
         count_if(date_inscription > dateadd(day, -180, current_date))       as nb_inscriptions_180j,
         count_if(date_inscription >  dateadd(day, -545, current_date)
              and date_inscription <= dateadd(day, -365, current_date))      as nb_inscriptions_180j_n1
@@ -171,6 +177,7 @@ mesures as (
         coalesce(a.nb_jours_actifs_365j, 0)    as nb_jours_actifs_365j,
         coalesce(a.nb_inscriptions_365j, 0)    as nb_inscriptions_365j,
         coalesce(a.nb_inscriptions_90j, 0)     as nb_inscriptions_90j,
+        coalesce(a.nb_inscriptions_90j_n1, 0)  as nb_inscriptions_90j_n1,
         coalesce(a.nb_inscriptions_180j, 0)    as nb_inscriptions_180j,
         coalesce(a.nb_inscriptions_180j_n1, 0) as nb_inscriptions_180j_n1,
         datediff(day, a.date_derniere_inscription, current_date) as jours_sans_inscription,
@@ -216,6 +223,8 @@ select
         when jours_sans_inscription >= seuil_silence_jours         then 'inactive'
         when nb_inscriptions_180j_n1 >= 10
          and nb_inscriptions_180j < 0.4 * nb_inscriptions_180j_n1  then 'en_baisse'
+        when nb_inscriptions_90j_n1 >= 10
+         and nb_inscriptions_90j < 0.4 * nb_inscriptions_90j_n1    then 'en_baisse'
         when nb_jours_actifs_365j < 4                              then 'occasionnelle'
         else 'active'
     end as statut,

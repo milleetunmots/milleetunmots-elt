@@ -17,7 +17,8 @@ models:
         description: >
           inactive : silence ≥ 3 × l'intervalle habituel (30 jours minimum),
           signal backtesté (précision 0,65 à 120 jours). en_baisse : moins de
-          40 % des inscriptions des mêmes 180 jours un an plus tôt, règle non
+          40 % des inscriptions des mêmes 180 jours un an plus tôt, ou des
+          mêmes 90 jours, règle non
           backtestée. jamais_demarree : créée depuis 60 jours ou plus, sans
           aucune inscription.
         tests:

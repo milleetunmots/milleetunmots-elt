@@ -88,8 +88,9 @@ cards:
     filters: [financeur, source]
     description: >
       Sources qui inscrivent toujours, mais moins de 40 % de ce qu'elles
-      inscrivaient sur les memes 180 jours un an plus tot (10 inscriptions au
-      moins alors). Comparer a la meme periode neutralise la saisonnalite.
+      inscrivaient sur les memes 180 jours un an plus tot, ou sur les memes
+      90 jours (10 inscriptions au moins alors). Les 90 jours attrapent une
+      chute recente que 180 jours diluent. Comparer a la meme periode neutralise la saisonnalite.
       Regle non backtestee, a juger a l'usage.
     visualization:
       scalar.field: En baisse
@@ -222,6 +223,8 @@ cards:
           plus_long_silence_passe_jours as "Plus long silence passe (jours)",
           iff(is_silence_record, 'oui', 'non') as "Silence record",
           nb_inscriptions_meme_periode_n1 as "Inscrits a la meme periode l'an dernier",
+          nb_inscriptions_90j          as "Inscriptions 90 derniers jours",
+          nb_inscriptions_90j_n1       as "Memes 90 jours, un an plus tot",
           nb_inscriptions_180j         as "Inscriptions 180 derniers jours",
           nb_inscriptions_180j_n1      as "Memes 180 jours, un an plus tot",
           nb_inscriptions_par_mois_historique as "Inscriptions par mois, historique",
@@ -315,7 +318,7 @@ cards:
     text: |
       **Comment lire les statuts**
       - *Inactive* : silence d'au moins 3 fois l'intervalle habituel de la source (30 jours minimum). Signal backtesté : 65 % des sources signalées n'inscrivent plus rien dans les 120 jours.
-      - *En baisse* : moins de 40 % des inscriptions des mêmes 180 jours l'an dernier. Règle pas encore validée.
+      - *En baisse* : moins de 40 % des inscriptions des mêmes 180 jours l'an dernier, ou des mêmes 90 jours. Règle pas encore validée.
       - *Jamais démarrée* : créée depuis 60 jours ou plus, sans aucune inscription.
 
       **Juger un silence** — *Silence record* : plus long que tout écart passé entre deux jours d'inscription. *Inscrits à la même période l'an dernier* : non nul, le silence n'est pas saisonnier. Attention aux sources qui inscrivent par lots une fois par an : la courbe le montre, pas les colonnes.

@@ -39,6 +39,8 @@ select
     seuil_silence_jours,
     nb_jours_actifs_365j,
     nb_inscriptions_365j,
+    nb_inscriptions_90j,
+    nb_inscriptions_90j_n1,
     nb_inscriptions_180j,
     nb_inscriptions_180j_n1,
     -- --------------------------------------------------------------- 4. habitude
