@@ -90,7 +90,7 @@ autre table la surcharge :
 ```yaml
     filters: [financeur, source]
     dimensions:
-      source: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.SOURCE
+      source: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.SOURCE
 ```
 
 Sans cette surcharge, un filtre ne touche que les cartes de sa table, et le
