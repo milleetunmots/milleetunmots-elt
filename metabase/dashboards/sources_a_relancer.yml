@@ -124,14 +124,14 @@ cards:
     col: 0
     size_x: 24
     size_y: 1
-    text: Passees inactives ces 7 derniers jours — la carte de l'alerte hebdomadaire
+    text: Passées inactives ces 7 derniers jours — la carte de l'alerte hebdomadaire
 
   - name: Sources · Nouvelles sources inactives (7 derniers jours)
     display: table
     row: 4
     col: 0
     size_x: 24
-    size_y: 5
+    size_y: 4
     description: >
       Sources ayant franchi leur seuil de silence dans les 7 derniers jours.
       C'est la carte qui porte l'alerte : chaque source n'y apparait qu'une
@@ -174,15 +174,15 @@ cards:
 
   - name: Titre liste
     display: heading
-    row: 9
+    row: 17
     col: 0
     size_x: 24
     size_y: 1
-    text: Toutes les sources a relancer
+    text: Toutes les sources à relancer — cliquer une source pour tracer ses inscriptions
 
   - name: Sources · Liste a relancer
     display: table
-    row: 10
+    row: 18
     col: 0
     size_x: 24
     size_y: 10
@@ -235,18 +235,18 @@ cards:
 
   - name: Titre courbe
     display: heading
-    row: 20
+    row: 8
     col: 0
     size_x: 24
     size_y: 1
-    text: Inscriptions de la source par semaine, 15 derniers mois — choisir une source dans le filtre, ou cliquer son nom dans une liste
+    text: Inscriptions par semaine, 15 derniers mois — choisir une source dans le filtre ou cliquer son nom dans un tableau
 
   - name: Sources · Inscriptions de la source par semaine
     display: combo
-    row: 21
+    row: 9
     col: 0
     size_x: 24
-    size_y: 7
+    size_y: 8
     filters: [financeur, statut, source]
     # la courbe lit la vue hebdomadaire : les trois filtres y sont rebranches
     dimensions:
@@ -260,18 +260,30 @@ cards:
       s'affiche depuis sa premiere inscription. Sans source choisie, la courbe
       somme les sources retenues par les filtres Financeur et Statut -- toutes,
       si aucun n'est choisi. Le statut est celui du jour. Les semaines sans
-      inscription sont a 0 et non absentes : un trou se voit. La derniere
-      semaine est en cours, donc partielle. Meme definition d'une inscription
+      inscription sont a 0 et non absentes : un trou se voit. La semaine en
+      cours n'est pas tracee : partielle, elle se lirait comme une chute. Meme definition d'une inscription
       que les statuts (hors reinscriptions, enfants supprimes, test et
       bouche-a-oreille).
     visualization:
       graph.dimensions: [Semaine]
       graph.metrics: [Inscriptions, "Meme semaine, un an plus tot"]
       graph.x_axis.title_text: ""
+      graph.x_axis.scale: timeseries
       graph.y_axis.title_text: Enfants inscrits
+      graph.show_values: false
+      legend.is_reversed: false
       series_settings:
-        Inscriptions: {display: bar}
-        "Meme semaine, un an plus tot": {display: line}
+        Inscriptions:
+          display: bar
+          color: "#509EE3"
+          title: Inscriptions de la semaine
+        "Meme semaine, un an plus tot":
+          display: line
+          color: "#A6AEB8"
+          line.style: dashed
+          line.marker_enabled: false
+          line.interpolate: monotone
+          title: Même semaine, un an plus tôt
     sql: |
       select
           semaine                      as "Semaine",
@@ -279,6 +291,7 @@ cards:
           sum(nb_inscriptions_n1)      as "Meme semaine, un an plus tot"
       from analytics.inscriptions_sources_semaine
       where semaine >= date_trunc(week, dateadd(month, -15, current_date))
+        and not is_semaine_en_cours
         [[and {{financeur}}]]
         [[and {{statut}}]]
         [[and {{source}}]]
@@ -290,9 +303,13 @@ cards:
     row: 28
     col: 0
     size_x: 24
-    size_y: 4
+    size_y: 6
     text: |
-      **Comment lire.** *Inactive* : silence d'au moins 3 fois l'intervalle habituel de la source (30 jours minimum), signal backteste (65 % des sources signalees n'inscrivent plus rien dans les 120 jours). *En baisse* : moins de 40 % des inscriptions des memes 180 jours l'an dernier, regle non encore validee. *Jamais demarree* : creee depuis 60 jours, aucune inscription.
-      **Juger un silence.** Deux colonnes disent s'il sort des habitudes de la source : *Silence record* (plus long que tout ecart passe entre deux jours d'inscription) et *Inscrits a la meme periode l'an dernier* (non nul = la source inscrivait a cette epoque, le silence n'est pas saisonnier). La premiere inscription connue des sources anterieures a 2024 tombe en fevrier 2024, date de reprise de l'historique.
-      Hors reinscriptions, enfants supprimes, sources de test et bouche-a-oreille. Les sources muettes depuis plus d'un an (*dormantes*) n'y sont pas : c'est une reprise de partenariat, pas une relance.
-      Regles : `fact.activite_sources` dans dbt.
+      **Comment lire les statuts**
+      - *Inactive* : silence d'au moins 3 fois l'intervalle habituel de la source (30 jours minimum). Signal backtesté : 65 % des sources signalées n'inscrivent plus rien dans les 120 jours.
+      - *En baisse* : moins de 40 % des inscriptions des mêmes 180 jours l'an dernier. Règle pas encore validée.
+      - *Jamais démarrée* : créée depuis 60 jours ou plus, sans aucune inscription.
+
+      **Juger un silence** — *Silence record* : plus long que tout écart passé entre deux jours d'inscription. *Inscrits à la même période l'an dernier* : non nul, le silence n'est pas saisonnier. Attention aux sources qui inscrivent par lots une fois par an (CAF Oise) : la courbe le montre, pas les colonnes.
+
+      **Périmètre** — hors réinscriptions, enfants supprimés, sources de test et bouche-à-oreille. Les sources muettes depuis plus d'un an (*dormantes*) n'y sont pas : c'est une reprise de partenariat, pas une relance. Première inscription connue des sources antérieures à 2024 : février 2024, date de reprise de l'historique. Règles : `fact.activite_sources` dans dbt.
