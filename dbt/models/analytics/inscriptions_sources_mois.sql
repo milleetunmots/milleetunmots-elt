@@ -24,7 +24,7 @@ with inscriptions as (
 -- le statut d'alerte du jour, pour que le filtre Statut du dashboard porte
 -- aussi sur la courbe
 activite as (
-    select source_id, statut, channel from {{ ref('activite_sources') }}
+    select source_id, statut, statut_libelle, channel from {{ ref('activite_sources') }}
 ),
 
 sources as (
@@ -63,6 +63,7 @@ select
     g.project_label                        as financeur,
     g.source_id,
     a.statut,
+    a.statut_libelle,
     g.mois,
     coalesce(p.nb, 0)                      as nb_inscriptions,
     -- null avant le premier mois de la source : pas d'historique, pas zero

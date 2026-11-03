@@ -67,6 +67,8 @@ models:
     columns:
       - name: statut
         description: Statut d'alerte du jour de la source, pour filtrer la courbe comme les listes.
+      - name: statut_libelle
+        description: Le statut en clair (« N'inscrit plus », « Inscrit moins qu'avant »…), celui du filtre Statut.
       - name: nb_inscriptions_n1
         description: >
           Le même mois un an plus tôt ; null avant le premier mois de la source.

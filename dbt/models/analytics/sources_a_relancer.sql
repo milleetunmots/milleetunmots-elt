@@ -26,6 +26,7 @@
 select
     -- ---------------------------------------------------------------- 1. verdict
     statut,
+    statut_libelle,
     case statut
         when 'inactive' then
             'Aucune inscription depuis ' || jours_sans_inscription || ' jours, alors qu''elle '

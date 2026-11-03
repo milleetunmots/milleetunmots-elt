@@ -28,8 +28,9 @@
 
 name: Sources a relancer
 description: >
-  Les PMI et partenaires locaux a recontacter : inactives au regard de leur propre
-  rythme, en baisse par rapport a l'an dernier, ou jamais demarrees. Avec
+  Les PMI et partenaires locaux a recontacter : celles qui n'inscrivent plus au
+  regard de leur propre rythme, qui inscrivent moins que l'an dernier, ou qui
+  n'ont jamais inscrit. Avec
   l'email du dernier professionnel ayant inscrit via la source, quand il a ete
   saisi (depuis aout 2026 seulement).
   Spec : metabase/dashboards/sources_a_relancer.yml
@@ -45,7 +46,7 @@ filters:
   - slug: statut
     display_name: Statut
     type: string/=
-    dimension: ANALYTICS.SOURCES_A_RELANCER.STATUT
+    dimension: ANALYTICS.SOURCES_A_RELANCER.STATUT_LIBELLE
   # Les listes le positionnent aussi au clic (card_settings). Ses valeurs
   # viennent de toutes les colonnes branchees, dont la vue mensuelle qui porte
   # TOUTES les sources du perimetre : on peut regarder n'importe laquelle, meme
@@ -71,7 +72,7 @@ cards:
       l'annee -- peuvent l'etre.
     visualization:
       scalar.field: Inactives
-      card.title: Inactives
+      card.title: N'inscrivent plus
     sql: |
       select count(*) as "Inactives"
       from analytics.sources_a_relancer
@@ -94,7 +95,7 @@ cards:
       Regle non backtestee, a juger a l'usage.
     visualization:
       scalar.field: En baisse
-      card.title: En baisse
+      card.title: Inscrivent moins qu'avant
     sql: |
       select count(*) as "En baisse"
       from analytics.sources_a_relancer
@@ -114,7 +115,7 @@ cards:
       inscription : un partenariat ouvert qui n'a jamais pris.
     visualization:
       scalar.field: Jamais demarrees
-      card.title: Jamais démarrées
+      card.title: N'ont jamais inscrit
     sql: |
       select count(*) as "Jamais demarrees"
       from analytics.sources_a_relancer
@@ -128,7 +129,7 @@ cards:
     col: 0
     size_x: 24
     size_y: 1
-    text: Alerte de la semaine · sources passées inactives
+    text: Alerte de la semaine · sources qui viennent d'arrêter d'inscrire
 
   - name: Sources · Nouvelles sources inactives (7 derniers jours)
     display: table
@@ -144,7 +145,7 @@ cards:
       sans eux. Cliquer une source trace ses inscriptions dans la courbe du bas.
     filters: [financeur, source]
     card_settings:
-      card.title: Nouvelles sources inactives, 7 derniers jours
+      card.title: Arrêt constaté ces 7 derniers jours
       column_settings:
         '["name","Source"]':
           click_behavior:
@@ -172,7 +173,7 @@ cards:
           mois_les_plus_actifs         as "Mois les plus actifs",
           nb_inscriptions_365j         as "Inscriptions sur 12 mois",
           date_creation_source         as "Source creee le",
-          date_bascule_inactive        as "Inactive depuis le"
+          date_bascule_inactive        as "Arret constate le"
       from analytics.sources_a_relancer
       where statut = 'inactive'
         and date_bascule_inactive >= current_date - 7
@@ -196,7 +197,8 @@ cards:
     size_y: 10
     filters: [financeur, statut, source]
     description: >
-      Une ligne par source a relancer, des inactives aux jamais demarrees, et
+      Une ligne par source a relancer, de celles qui n'inscrivent plus a celles
+      qui n'ont jamais inscrit, et
       dans chaque statut de la plus volumineuse l'an dernier a la plus petite.
       La colonne Pourquoi dit en une phrase, chiffres de la source a l'appui,
       ce qui l'a fait remonter.
@@ -219,11 +221,7 @@ cards:
           text_wrapping: true
     sql: |
       select
-          case statut
-              when 'inactive' then 'Inactive'
-              when 'en_baisse' then 'En baisse'
-              when 'jamais_demarree' then 'Jamais démarrée'
-          end                          as "Statut",
+          statut_libelle               as "Statut",
           source                       as "Source",
           motif                        as "Pourquoi",
           financeur                    as "Financeur",
@@ -271,7 +269,7 @@ cards:
     # la courbe lit la vue mensuelle : les trois filtres y sont rebranches
     dimensions:
       financeur: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.FINANCEUR
-      statut: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.STATUT
+      statut: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.STATUT_LIBELLE
       source: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.SOURCE
     description: >
       Inscriptions mensuelles de la source choisie (barres bleues), contre le
@@ -328,11 +326,11 @@ cards:
     size_x: 24
     size_y: 6
     text: |
-      **Comment lire les statuts**
-      - *Inactive* : silence d'au moins 3 fois l'intervalle habituel de la source (30 jours minimum). Signal backtesté : 65 % des sources signalées n'inscrivent plus rien dans les 120 jours.
-      - *En baisse* : moins de 40 % des inscriptions des mêmes 180 jours l'an dernier, ou des mêmes 90 jours. Règle pas encore validée.
-      - *Jamais démarrée* : créée depuis 60 jours ou plus, sans aucune inscription.
+      **Comment lire les statuts** — la colonne *Pourquoi* donne les chiffres de chaque source.
+      - *N'inscrit plus* : aucune inscription depuis au moins 3 fois son rythme habituel (30 jours minimum). Une source qui inscrit tous les 10 jours est signalée après 30 jours de silence. Fiable : 65 % des sources signalées n'inscrivent plus rien dans les 4 mois suivants.
+      - *Inscrit moins qu'avant* : moins de 40 % de ce qu'elle inscrivait l'an dernier à la même période, sur les 3 ou les 6 derniers mois. Règle pas encore validée.
+      - *N'a jamais inscrit* : créée depuis 2 mois ou plus, sans aucune inscription.
 
       **Juger un silence** — *Silence record* : plus long que tout écart passé entre deux jours d'inscription. *Inscrits à la même période l'an dernier* : non nul, le silence n'est pas saisonnier. Attention aux sources qui inscrivent par lots une fois par an : la courbe le montre, pas les colonnes.
 
-      **Périmètre** — PMI et partenaires locaux seulement, hors CAF. Hors réinscriptions, enfants supprimés, sources de test et bouche-à-oreille. Les sources muettes depuis plus d'un an (*dormantes*) n'y sont pas : c'est une reprise de partenariat, pas une relance. Première inscription connue des sources antérieures à 2024 : février 2024, date de reprise de l'historique. Règles : `fact.activite_sources` dans dbt.
+      **Périmètre** — PMI et partenaires locaux seulement, hors CAF. Hors réinscriptions, enfants supprimés, sources de test et bouche-à-oreille. Les sources muettes depuis plus d'un an n'y sont pas : c'est une reprise de partenariat, pas une relance. Première inscription connue des sources antérieures à 2024 : février 2024, date de reprise de l'historique. Règles : `fact.activite_sources` dans dbt.

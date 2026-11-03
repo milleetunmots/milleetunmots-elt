@@ -228,6 +228,17 @@ select
         when nb_jours_actifs_365j < 4                              then 'occasionnelle'
         else 'active'
     end as statut,
+    -- le statut tel qu'on le lit : ce qui se passe cote inscriptions, sans
+    -- jargon (demande du 2026-11-03). Le code reste la cle des regles.
+    decode(statut,
+        'archivee',        'Archivée',
+        'jamais_demarree', 'N''a jamais inscrit',
+        'nouvelle',        'Nouvelle, pas encore d''inscription',
+        'dormante',        'N''inscrit plus depuis plus d''un an',
+        'inactive',        'N''inscrit plus',
+        'en_baisse',       'Inscrit moins qu''avant',
+        'occasionnelle',   'Inscrit rarement',
+        'active',          'Inscrit normalement') as statut_libelle,
     -- date a laquelle la source a franchi son seuil de silence : c'est elle qui
     -- permet a l'alerte de ne signaler chaque source qu'une fois. Approchee, car
     -- le seuil est recalcule chaque jour sur l'annee glissante.
