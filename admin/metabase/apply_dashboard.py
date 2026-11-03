@@ -151,6 +151,17 @@ def resout_champ(mb, base_id, reference):
 # ------------------------------------------------------------------ fabrication
 
 
+def dimension_carte(spec, carte, slug):
+    """La colonne qu'un filtre filtre DANS CETTE CARTE.
+
+    Par defaut celle du filtre ; une carte qui lit une autre table la surcharge
+    par `dimensions: {slug: SCHEMA.TABLE.COLONNE}`. Sans quoi un filtre ne
+    pourrait porter que sur les cartes d'une seule table.
+    """
+    filtre = next(f for f in spec["filters"] if f["slug"] == slug)
+    return (carte.get("dimensions") or {}).get(slug, filtre["dimension"])
+
+
 def tags_modele(spec, carte, champs):
     """Les template-tags d'une carte : un par filtre qu'elle declare.
 
@@ -167,7 +178,7 @@ def tags_modele(spec, carte, champs):
             "name": slug,
             "display-name": filtre["display_name"],
             "type": "dimension",
-            "dimension": ["field", champs[slug], None],
+            "dimension": ["field", champs[dimension_carte(spec, carte, slug)], None],
             "widget-type": filtre.get("type", "string/="),
         }
     return tags
@@ -215,7 +226,9 @@ def construit_plan(spec, mb, hors_ligne):
 
     collection_id = resout_collection(mb, spec["collection"])
     base_id = resout_base(mb, spec["database"])
-    champs = {f["slug"]: resout_champ(mb, base_id, f["dimension"]) for f in spec.get("filters", [])}
+    references = {f["dimension"] for f in spec.get("filters", [])}
+    references |= {ref for carte in spec["cards"] for ref in (carte.get("dimensions") or {}).values()}
+    champs = {ref: resout_champ(mb, base_id, ref) for ref in sorted(references)}
     connues = cartes_existantes(mb, collection_id)
     for carte in spec["cards"]:
         if carte.get("display") in VIRTUELLES:
@@ -240,7 +253,7 @@ def empreinte_carte(carte):
     """
     corps = {cle: carte.get(cle) for cle in
              ("sql", "text", "description", "display", "visualization", "filters", "tab",
-              "row", "col", "size_x", "size_y")}
+              "row", "col", "size_x", "size_y", "dimensions", "card_settings")}
     return hashlib.sha256(json.dumps(corps, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:10]
 
 
@@ -261,6 +274,12 @@ def affiche_plan(plan, spec):
         if carte["action"] == "texte":
             continue
         print("  %-12s %s" % (carte["action"], carte["nom"]))
+    surcharges = [(c["name"], slug, ref) for c in spec["cards"]
+                  for slug, ref in (c.get("dimensions") or {}).items()]
+    if surcharges:
+        print()
+        for nom, slug, ref in surcharges:
+            print("  filtre %-10s -> %s  (%s)" % (slug, ref, nom))
     print()
 
 

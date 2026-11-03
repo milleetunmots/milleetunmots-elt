@@ -15,5 +15,6 @@ select
     ) as date_updated,
     details::string as details,
     registration_department::string as registration_department,
+    lower(trim(nullif(professional_email::string, ''))) as professional_email,
     re_enrollment::boolean as is_reenrollment
 from source

@@ -1,0 +1,298 @@
+# Sources a relancer : les partenaires qui n'inscrivent plus, ou beaucoup
+# moins, et a qui ecrire.
+#
+# OU VIVENT LES REGLES. Pas ici. Tout vient de analytics.sources_a_relancer,
+# vue d'exploitation de fact.activite_sources, ou vivent les statuts et le
+# backtest qui les justifie.
+#
+# LE SIGNAL EST RELATIF AU RYTHME DE LA SOURCE : silence >= 3 fois son
+# intervalle habituel entre deux jours d'inscription, 30 jours minimum. Un seuil
+# fixe sonnerait tout l'ete -- l'activite est tres saisonniere -- et 76 % des
+# sources silencieuses depuis 90 jours reviennent seules. Backtest du
+# 2026-11-03 : precision 0,65 (aucune inscription dans les 120 jours suivants),
+# contre 0,63 pour un seuil fixe de 90 jours, avec moins d'alertes et des
+# sources plus volumineuses attrapees.
+#
+# L'ALERTE PORTE SUR UNE SEULE CARTE, « Nouvelles sources inactives ». Elle ne
+# liste que les sources ayant franchi leur seuil dans les 7 derniers jours, pour
+# que chaque source n'arrive qu'une fois dans la boite mail. L'alerte Metabase
+# (« envoyer quand la question a des resultats ») se pose sur cette carte, hors
+# spec : l'outil d'apply ne gere pas les alertes. Les en_baisse et
+# jamais_demarree n'ont pas de date de bascule -- il faudrait un historique des
+# statuts -- et restent donc dans la liste complete, pas dans l'alerte.
+#
+# LES EMAILS SONT INCOMPLETS. La saisie de l'email du pro n'existe que depuis
+# aout 2026 et couvre un tiers des inscriptions : une source silencieuse depuis
+# plus longtemps n'a souvent aucun contact. Le financeur est affiche pour
+# passer alors par son referent.
+
+name: Sources a relancer
+description: >
+  Les sources d'inscription a recontacter : inactives au regard de leur propre
+  rythme, en baisse par rapport a l'an dernier, ou jamais demarrees. Avec
+  l'email du dernier professionnel ayant inscrit via la source, quand il a ete
+  saisi (depuis aout 2026 seulement).
+  Spec : metabase/dashboards/sources_a_relancer.yml
+
+collection: Claude/Sources a relancer
+database: snowflake_dw
+
+filters:
+  - slug: financeur
+    display_name: Financeur
+    type: string/=
+    dimension: ANALYTICS.SOURCES_A_RELANCER.FINANCEUR
+  - slug: statut
+    display_name: Statut
+    type: string/=
+    dimension: ANALYTICS.SOURCES_A_RELANCER.STATUT
+  # Les listes le positionnent aussi au clic (card_settings). Ses valeurs
+  # viennent de toutes les colonnes branchees, dont la vue mensuelle qui porte
+  # TOUTES les sources du perimetre : on peut regarder n'importe laquelle, meme
+  # une source active -- les listes sont alors vides, la courbe non.
+  - slug: source
+    display_name: Source
+    type: string/=
+    dimension: ANALYTICS.SOURCES_A_RELANCER.SOURCE
+
+cards:
+
+  - name: Sources · Inactives
+    display: scalar
+    row: 0
+    col: 0
+    size_x: 8
+    size_y: 3
+    filters: [financeur, source]
+    description: >
+      Sources silencieuses depuis au moins 3 fois leur intervalle habituel entre
+      deux jours d'inscription (30 jours minimum), et depuis moins d'un an.
+      Seules les sources regulieres -- au moins 4 jours d'inscription sur
+      l'annee -- peuvent l'etre.
+    visualization:
+      scalar.field: Inactives
+    sql: |
+      select count(*) as "Inactives"
+      from analytics.sources_a_relancer
+      where statut = 'inactive'
+        [[and {{financeur}}]]
+        [[and {{source}}]]
+
+  - name: Sources · En baisse
+    display: scalar
+    row: 0
+    col: 8
+    size_x: 8
+    size_y: 3
+    filters: [financeur, source]
+    description: >
+      Sources qui inscrivent toujours, mais moins de 40 % de ce qu'elles
+      inscrivaient sur les memes 180 jours un an plus tot (10 inscriptions au
+      moins alors). Comparer a la meme periode neutralise la saisonnalite.
+      Regle non backtestee, a juger a l'usage.
+    visualization:
+      scalar.field: En baisse
+    sql: |
+      select count(*) as "En baisse"
+      from analytics.sources_a_relancer
+      where statut = 'en_baisse'
+        [[and {{financeur}}]]
+        [[and {{source}}]]
+
+  - name: Sources · Jamais demarrees
+    display: scalar
+    row: 0
+    col: 16
+    size_x: 8
+    size_y: 3
+    filters: [financeur, source]
+    description: >
+      Sources creees dans l'application depuis 60 jours ou plus, sans une seule
+      inscription : un partenariat ouvert qui n'a jamais pris.
+    visualization:
+      scalar.field: Jamais demarrees
+    sql: |
+      select count(*) as "Jamais demarrees"
+      from analytics.sources_a_relancer
+      where statut = 'jamais_demarree'
+        [[and {{financeur}}]]
+        [[and {{source}}]]
+
+  - name: Titre alerte
+    display: heading
+    row: 3
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Passees inactives ces 7 derniers jours — la carte de l'alerte hebdomadaire
+
+  - name: Sources · Nouvelles sources inactives (7 derniers jours)
+    display: table
+    row: 4
+    col: 0
+    size_x: 24
+    size_y: 5
+    description: >
+      Sources ayant franchi leur seuil de silence dans les 7 derniers jours.
+      C'est la carte qui porte l'alerte : chaque source n'y apparait qu'une
+      semaine, donc n'arrive qu'une fois dans la boite mail. Les filtres du
+      dashboard ne touchent pas l'alerte : elle execute la question enregistree,
+      sans eux. Cliquer une source trace ses inscriptions dans la courbe du bas.
+    filters: [financeur, source]
+    card_settings:
+      column_settings:
+        '["name","Source"]':
+          click_behavior:
+            type: crossfilter
+            parameterMapping:
+              36cd38f4:
+                id: 36cd38f4
+                source: {type: column, id: Source, name: Source}
+                target: {type: parameter, id: 36cd38f4}
+    sql: |
+      select
+          source                       as "Source",
+          financeur                    as "Financeur",
+          email_contact_principal      as "Email du dernier pro",
+          emails_contacts              as "Tous les emails",
+          date_derniere_inscription    as "Derniere inscription",
+          jours_sans_inscription       as "Jours sans inscription",
+          intervalle_habituel_jours    as "Intervalle habituel (jours)",
+          plus_long_silence_passe_jours as "Plus long silence passe (jours)",
+          iff(is_silence_record, 'oui', 'non') as "Silence record",
+          nb_inscriptions_meme_periode_n1 as "Inscrits a la meme periode l'an dernier",
+          mois_les_plus_actifs         as "Mois les plus actifs",
+          nb_inscriptions_365j         as "Inscriptions sur 12 mois",
+          date_creation_source         as "Source creee le",
+          date_bascule_inactive        as "Inactive depuis le"
+      from analytics.sources_a_relancer
+      where statut = 'inactive'
+        and date_bascule_inactive >= current_date - 7
+        [[and {{financeur}}]]
+        [[and {{source}}]]
+      order by nb_inscriptions_365j desc
+
+  - name: Titre liste
+    display: heading
+    row: 9
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Toutes les sources a relancer
+
+  - name: Sources · Liste a relancer
+    display: table
+    row: 10
+    col: 0
+    size_x: 24
+    size_y: 10
+    filters: [financeur, statut, source]
+    description: >
+      Une ligne par source a relancer, des inactives aux jamais demarrees, et
+      dans chaque statut de la plus volumineuse l'an dernier a la plus petite.
+      L'email est celui du dernier professionnel ayant inscrit via la source ;
+      il n'est saisi que depuis aout 2026, d'ou les nombreux vides -- passer
+      alors par le referent du financeur. Cliquer une source trace ses
+      inscriptions dans la courbe du bas.
+    card_settings:
+      column_settings:
+        '["name","Source"]':
+          click_behavior:
+            type: crossfilter
+            parameterMapping:
+              36cd38f4:
+                id: 36cd38f4
+                source: {type: column, id: Source, name: Source}
+                target: {type: parameter, id: 36cd38f4}
+    sql: |
+      select
+          statut                       as "Statut",
+          source                       as "Source",
+          financeur                    as "Financeur",
+          email_contact_principal      as "Email du dernier pro",
+          emails_contacts              as "Tous les emails",
+          date_derniere_inscription    as "Derniere inscription",
+          jours_sans_inscription       as "Jours sans inscription",
+          intervalle_habituel_jours    as "Intervalle habituel (jours)",
+          plus_long_silence_passe_jours as "Plus long silence passe (jours)",
+          iff(is_silence_record, 'oui', 'non') as "Silence record",
+          nb_inscriptions_meme_periode_n1 as "Inscrits a la meme periode l'an dernier",
+          nb_inscriptions_180j         as "Inscriptions 180 derniers jours",
+          nb_inscriptions_180j_n1      as "Memes 180 jours, un an plus tot",
+          nb_inscriptions_par_mois_historique as "Inscriptions par mois, historique",
+          mois_les_plus_actifs         as "Mois les plus actifs",
+          date_creation_source         as "Source creee le",
+          date_premiere_inscription    as "Premiere inscription connue"
+      from analytics.sources_a_relancer
+      where 1 = 1
+        [[and {{financeur}}]]
+        [[and {{statut}}]]
+        [[and {{source}}]]
+      order by
+          case statut when 'inactive' then 1 when 'en_baisse' then 2 else 3 end,
+          nb_inscriptions_180j_n1 desc,
+          date_creation_source
+
+  - name: Titre courbe
+    display: heading
+    row: 20
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Inscriptions de la source par semaine, 15 derniers mois — choisir une source dans le filtre, ou cliquer son nom dans une liste
+
+  - name: Sources · Inscriptions de la source par semaine
+    display: combo
+    row: 21
+    col: 0
+    size_x: 24
+    size_y: 7
+    filters: [financeur, statut, source]
+    # la courbe lit la vue hebdomadaire : les trois filtres y sont rebranches
+    dimensions:
+      financeur: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.FINANCEUR
+      statut: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.STATUT
+      source: ANALYTICS.INSCRIPTIONS_SOURCES_SEMAINE.SOURCE
+    description: >
+      Inscriptions hebdomadaires de la source choisie (barres, semaines du
+      lundi), et la meme semaine un an plus tot (ligne) pour lire sa
+      saisonnalite propre. Fenetre de 15 mois au plus : une source plus recente
+      s'affiche depuis sa premiere inscription. Sans source choisie, la courbe
+      somme les sources retenues par les filtres Financeur et Statut -- toutes,
+      si aucun n'est choisi. Le statut est celui du jour. Les semaines sans
+      inscription sont a 0 et non absentes : un trou se voit. La derniere
+      semaine est en cours, donc partielle. Meme definition d'une inscription
+      que les statuts (hors reinscriptions, enfants supprimes, test et
+      bouche-a-oreille).
+    visualization:
+      graph.dimensions: [Semaine]
+      graph.metrics: [Inscriptions, "Meme semaine, un an plus tot"]
+      graph.x_axis.title_text: ""
+      graph.y_axis.title_text: Enfants inscrits
+      series_settings:
+        Inscriptions: {display: bar}
+        "Meme semaine, un an plus tot": {display: line}
+    sql: |
+      select
+          semaine                      as "Semaine",
+          sum(nb_inscriptions)         as "Inscriptions",
+          sum(nb_inscriptions_n1)      as "Meme semaine, un an plus tot"
+      from analytics.inscriptions_sources_semaine
+      where semaine >= date_trunc(week, dateadd(month, -15, current_date))
+        [[and {{financeur}}]]
+        [[and {{statut}}]]
+        [[and {{source}}]]
+      group by semaine
+      order by semaine
+
+  - name: Note methode
+    display: text
+    row: 28
+    col: 0
+    size_x: 24
+    size_y: 4
+    text: |
+      **Comment lire.** *Inactive* : silence d'au moins 3 fois l'intervalle habituel de la source (30 jours minimum), signal backteste (65 % des sources signalees n'inscrivent plus rien dans les 120 jours). *En baisse* : moins de 40 % des inscriptions des memes 180 jours l'an dernier, regle non encore validee. *Jamais demarree* : creee depuis 60 jours, aucune inscription.
+      **Juger un silence.** Deux colonnes disent s'il sort des habitudes de la source : *Silence record* (plus long que tout ecart passe entre deux jours d'inscription) et *Inscrits a la meme periode l'an dernier* (non nul = la source inscrivait a cette epoque, le silence n'est pas saisonnier). La premiere inscription connue des sources anterieures a 2024 tombe en fevrier 2024, date de reprise de l'historique.
+      Hors reinscriptions, enfants supprimes, sources de test et bouche-a-oreille. Les sources muettes depuis plus d'un an (*dormantes*) n'y sont pas : c'est une reprise de partenariat, pas une relance.
+      Regles : `fact.activite_sources` dans dbt.

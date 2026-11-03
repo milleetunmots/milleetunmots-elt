@@ -64,6 +64,12 @@ clause générée ne résout pas.
 porte le tag, une qui ne le porte pas. Avec une seule, le filtre écrase aussi
 la moyenne, qui vaut alors toujours la valeur individuelle.
 
+**Un filtre doit porter sur toutes les cartes qu'il concerne, même quand
+elles lisent des tables différentes** : surcharger sa colonne carte par carte
+avec `dimensions: {slug: SCHEMA.TABLE.COLONNE}`. Après l'apply, vérifier pour
+chaque filtre la liste des cartes qui le portent — un filtre qui n'en touche
+qu'une partie passe inaperçu à la relecture de la spec.
+
 **Un filtre ne s'applique qu'à l'endroit où le tag est posé.** Pour dépivoter
 des sessions, scanner `super_table` UNE fois avec le filtre, puis dépivoter
 depuis cette CTE — sinon seule la première branche de l'union est filtrée.
@@ -139,3 +145,4 @@ correspondre à personne.
 | `accompagnantes.yml` | `Claude/Accompagnantes` | [119](https://metabase.1001mots.org/dashboard/119) |
 | `fidelity.yml` | `Claude/Suivi Fidelity` | [118](https://metabase.1001mots.org/dashboard/118) |
 | `suivi_projet.yml` | `Claude/Suivi de projet` | [120](https://metabase.1001mots.org/dashboard/120) |
+| `sources_a_relancer.yml` | `Claude/Sources a relancer` | [122](https://metabase.1001mots.org/dashboard/122) |

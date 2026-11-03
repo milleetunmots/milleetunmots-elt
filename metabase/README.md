@@ -83,6 +83,21 @@ valeur qui périme. En contrepartie, trois contraintes :
   nu après un `where`, il produit `where ... 1=1` et la carte tombe en erreur de
   syntaxe. C'est l'erreur qui a coûté un aller-retour la première fois.
 
+**Un filtre peut porter sur des cartes qui lisent des tables différentes.** Sa
+`dimension` vaut par défaut pour toutes les cartes ; une carte qui lit une
+autre table la surcharge :
+
+```yaml
+    filters: [financeur, source]
+    dimensions:
+      source: ANALYTICS.INSCRIPTIONS_SOURCES_MOIS.SOURCE
+```
+
+Sans cette surcharge, un filtre ne touche que les cartes de sa table, et le
+lecteur croit filtrer un dashboard qui ne l'est qu'à moitié — c'est arrivé sur
+`sources_a_relancer.yml`. Une colonne ajoutée à une vue déjà synchronisée doit
+l'être à son tour (« Colonne … absente »).
+
 **Comparer « moi » à « la moyenne collective » demande deux lectures de la
 table.** Le filtre s'injecte là où le tag est posé : s'il n'y a qu'une lecture,
 il écrase aussi la moyenne, qui vaut alors toujours la valeur individuelle. La
@@ -127,6 +142,7 @@ clause que Metabase générerait.
 | `accompagnantes.yml` | `Claude/Accompagnantes` | [119](https://metabase.1001mots.org/dashboard/119) | Les accompagnantes : le programme, et chacune face au collectif |
 | `fidelity.yml` | `Claude/Suivi Fidelity` | [118](https://metabase.1001mots.org/dashboard/118) | Suivi des engagements du contrat Fidelity |
 | `suivi_projet.yml` | `Claude/Suivi de projet` | [120](https://metabase.1001mots.org/dashboard/120) | Où en est chaque financeur de ce qu'il a contractualisé |
+| `sources_a_relancer.yml` | `Claude/Sources a relancer` | [122](https://metabase.1001mots.org/dashboard/122) | Les sources d'inscription inactives ou en baisse, et à qui écrire |
 
 Les deux sont en spec : un renommage de colonne dans dbt se rattrape maintenant
 en relançant l'apply, au lieu de casser une carte sans prévenir — ce qui était

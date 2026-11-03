@@ -1,0 +1,73 @@
+version: 2
+
+models:
+  - name: sources_a_relancer
+    description: >
+      Sources d'inscription à recontacter : inactives au regard de leur propre
+      rythme, en baisse sur un an, ou jamais démarrées. Une ligne par source.
+      Simple sélection de fact.activite_sources, où vivent les règles et le
+      backtest qui les justifie.
+    columns:
+      - name: source_id
+        tests:
+          - unique
+          - not_null
+      - name: statut
+        description: >
+          inactive : silence ≥ 3 × l'intervalle habituel (30 jours minimum),
+          signal backtesté (précision 0,65 à 120 jours). en_baisse : moins de
+          40 % des inscriptions des mêmes 180 jours un an plus tôt, règle non
+          backtestée. jamais_demarree : créée depuis 60 jours ou plus, sans
+          aucune inscription.
+        tests:
+          - accepted_values:
+              values: ['inactive', 'en_baisse', 'jamais_demarree']
+      - name: date_bascule_inactive
+        description: >
+          Jour où la source a franchi son seuil de silence. Renseigné pour les
+          seules inactives : c'est sur lui que l'alerte filtre pour ne signaler
+          chaque source qu'une fois.
+      - name: email_contact_principal
+        description: >
+          Le professionnel qui a inscrit le plus récemment via la source. Saisi
+          seulement depuis août 2026, sur un tiers des inscriptions : souvent
+          vide pour les sources silencieuses de longue date.
+      - name: emails_contacts
+        description: Tous les professionnels de la source, du plus récent au plus ancien.
+      - name: date_premiere_inscription
+        description: >
+          Première inscription connue. Pour les sources antérieures à 2024, elle
+          tombe en février 2024, date de la reprise de l'historique dans
+          l'application, et non au vrai démarrage du partenariat.
+      - name: plus_long_silence_passe_jours
+        description: >
+          Le plus long écart entre deux jours d'inscription, silence en cours
+          exclu. Un silence actuel plus long (is_silence_record) sort de toutes
+          les habitudes de la source.
+      - name: nb_inscriptions_meme_periode_n1
+        description: >
+          Inscriptions un an plus tôt, sur la période calendaire du silence en
+          cours. Non nul : la source inscrivait à cette époque l'an dernier, le
+          silence n'est donc pas saisonnier.
+      - name: mois_les_plus_actifs
+        description: Les trois mois de l'année où la source inscrit le plus, tout historique confondu.
+
+  - name: inscriptions_sources_semaine
+    description: >
+      Inscriptions hebdomadaires de chaque source (semaines du lundi), de sa
+      première semaine à la semaine en cours, semaines vides à 0. Sert la courbe
+      « Inscriptions de la source par semaine » du dashboard Sources à
+      relancer, qui la borne aux 15 derniers mois. Même définition d'une
+      inscription que fact.activite_sources (fact.inscriptions_sources).
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['source_id', 'semaine']
+    columns:
+      - name: statut
+        description: Statut d'alerte du jour de la source, pour filtrer la courbe comme les listes.
+      - name: nb_inscriptions_n1
+        description: >
+          La même semaine un an plus tôt (52 semaines, même jour de la semaine) ;
+          null avant la première semaine de la source.
+      - name: is_semaine_en_cours
+        description: La semaine en cours est partielle, à ne pas lire comme une baisse.
