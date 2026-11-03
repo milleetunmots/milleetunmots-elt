@@ -15,6 +15,9 @@
 -- pas : une relance n'y est plus une alerte mais une reprise de partenariat.
 --
 -- Vue, et non table : les regles vivent dans fact.activite_sources.
+--
+-- PMI et partenaires locaux seulement (demande du 2026-11-03) : les CAF sont
+-- hors du dashboard. fact.activite_sources garde toutes les sources.
 
 select
     -- ---------------------------------------------------------------- 1. verdict
@@ -49,3 +52,4 @@ select
     mois_les_plus_actifs
 from {{ ref('activite_sources') }}
 where statut in ('inactive', 'en_baisse', 'jamais_demarree')
+    and channel in ('pmi', 'local_partner')

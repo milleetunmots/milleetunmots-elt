@@ -28,7 +28,7 @@
 
 name: Sources a relancer
 description: >
-  Les sources d'inscription a recontacter : inactives au regard de leur propre
+  Les PMI et partenaires locaux a recontacter : inactives au regard de leur propre
   rythme, en baisse par rapport a l'an dernier, ou jamais demarrees. Avec
   l'email du dernier professionnel ayant inscrit via la source, quand il a ete
   saisi (depuis aout 2026 seulement).
@@ -310,6 +310,6 @@ cards:
       - *En baisse* : moins de 40 % des inscriptions des mêmes 180 jours l'an dernier. Règle pas encore validée.
       - *Jamais démarrée* : créée depuis 60 jours ou plus, sans aucune inscription.
 
-      **Juger un silence** — *Silence record* : plus long que tout écart passé entre deux jours d'inscription. *Inscrits à la même période l'an dernier* : non nul, le silence n'est pas saisonnier. Attention aux sources qui inscrivent par lots une fois par an (CAF Oise) : la courbe le montre, pas les colonnes.
+      **Juger un silence** — *Silence record* : plus long que tout écart passé entre deux jours d'inscription. *Inscrits à la même période l'an dernier* : non nul, le silence n'est pas saisonnier. Attention aux sources qui inscrivent par lots une fois par an : la courbe le montre, pas les colonnes.
 
-      **Périmètre** — hors réinscriptions, enfants supprimés, sources de test et bouche-à-oreille. Les sources muettes depuis plus d'un an (*dormantes*) n'y sont pas : c'est une reprise de partenariat, pas une relance. Première inscription connue des sources antérieures à 2024 : février 2024, date de reprise de l'historique. Règles : `fact.activite_sources` dans dbt.
+      **Périmètre** — PMI et partenaires locaux seulement, hors CAF. Hors réinscriptions, enfants supprimés, sources de test et bouche-à-oreille. Les sources muettes depuis plus d'un an (*dormantes*) n'y sont pas : c'est une reprise de partenariat, pas une relance. Première inscription connue des sources antérieures à 2024 : février 2024, date de reprise de l'historique. Règles : `fact.activite_sources` dans dbt.

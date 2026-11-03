@@ -5,6 +5,7 @@ models:
     description: >
       Sources d'inscription à recontacter : inactives au regard de leur propre
       rythme, en baisse sur un an, ou jamais démarrées. Une ligne par source.
+      PMI et partenaires locaux seulement, les CAF sont hors périmètre.
       Simple sélection de fact.activite_sources, où vivent les règles et le
       backtest qui les justifie.
     columns:

@@ -17,9 +17,10 @@
 -- grille partant de la premiere inscription, une source plus recente s'affiche
 -- naturellement depuis son debut.
 --
--- Toutes les sources du perimetre y sont, pas seulement celles a relancer : on
--- doit pouvoir regarder n'importe quelle source. La semaine en cours est
--- partielle.
+-- Toutes les PMI et partenaires locaux y sont, pas seulement ceux a relancer :
+-- on doit pouvoir regarder n'importe quelle source. Les CAF en sont retirees,
+-- comme de analytics.sources_a_relancer, pour que la courbe et les listes
+-- portent sur les memes sources. La semaine en cours est partielle.
 
 with inscriptions as (
     select * from {{ ref('inscriptions_sources') }}
@@ -28,7 +29,7 @@ with inscriptions as (
 -- le statut d'alerte du jour, pour que le filtre Statut du dashboard porte
 -- aussi sur la courbe
 activite as (
-    select source_id, statut from {{ ref('activite_sources') }}
+    select source_id, statut, channel from {{ ref('activite_sources') }}
 ),
 
 sources as (
@@ -38,6 +39,8 @@ sources as (
         project_label,
         date_trunc(week, min(date_inscription)) as premiere_semaine
     from inscriptions
+    where source_id in (select source_id from activite
+                        where channel in ('pmi', 'local_partner'))
     group by source_id, source_name, project_label
 ),
 
