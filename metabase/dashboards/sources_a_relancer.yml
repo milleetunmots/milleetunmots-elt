@@ -256,9 +256,9 @@ cards:
     description: >
       Inscriptions hebdomadaires de la source choisie depuis la premiere
       semaine de l'annee (barres, semaines ISO du lundi), contre la meme
-      semaine de l'annee precedente (ligne, 52 semaines plus tot) pour lire sa
+      semaine de l'annee precedente (barres grises, 52 semaines plus tot) pour lire sa
       saisonnalite propre. La semaine 1 peut commencer fin decembre. Une source
-      plus recente s'affiche depuis sa premiere inscription, sans ligne avant
+      plus recente s'affiche depuis sa premiere inscription, sans barre grise avant
       son premier anniversaire. Sans source choisie, la courbe
       somme les sources retenues par les filtres Financeur et Statut -- toutes,
       si aucun n'est choisi. Le statut est celui du jour. Les semaines sans
@@ -280,11 +280,8 @@ cards:
           color: "#509EE3"
           title: Année en cours
         "Annee precedente":
-          display: line
-          color: "#A6AEB8"
-          line.style: dashed
-          line.marker_enabled: false
-          line.interpolate: monotone
+          display: bar
+          color: "#C9CED6"
           title: Année précédente
     sql: |
       select
