@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: suivi_financeurs_enfant
+    description: >
+      Le détail du suivi des engagements rattaché aux financeurs tels que le
+      métier les suit : les lignes et les colonnes de suivi_engagements_enfant
+      (un enfant par année de suivi), plus financeur_code et la mesure
+      « inscrit sur l'année ». Les règles reprennent les filtres du dashboard
+      Mécènes et Partenaires et redonnent ses comptes ; un enfant n'y a qu'un
+      seul financeur. Rien n'est filtré : cohortes exclues et sources de test
+      restent visibles. Vue.
+    columns:
+      - name: financeur_code
+        description: >
+          Le financeur de l'enfant, clé de dim.financeur. Trois codes n'y
+          figurent pas et sortent du périmètre : 'TEST', 'BAO'
+          (bouche-à-oreille, hors familles du 92) et 'SANS_SOURCE'. 'AUTRES'
+          recueille tout le reste, périmètre provisoire.
+        tests:
+          - not_null
+      - name: is_inscrit_compte_dans_annee
+        description: >
+          L'enfant compte comme inscrit sur l'année de suivi : créé dans
+          l'année, statut différent de not_supported. C'est la définition de
+          fact.mecene (date_of_registration et is_accompanied). À ne pas
+          confondre avec is_entree_dans_annee, qui date l'enfant par le
+          démarrage de sa cohorte.

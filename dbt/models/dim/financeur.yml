@@ -1,0 +1,53 @@
+version: 2
+
+models:
+  - name: financeur
+    description: >
+      Référentiel des financeurs suivis : une ligne ici est une ligne du tableau
+      du dashboard « Suivi de projet v2 ». Liste, libellés et ordre arrêtés avec
+      le métier le 2026-11-10. C'est ici qu'on retire ou qu'on ajoute un
+      financeur à l'affichage ; la règle qui lui rattache des enfants vit dans
+      suivi_financeurs_enfant.
+    columns:
+      - name: financeur_code
+        description: >
+          Code stable du financeur. Reprend le project_code de la feuille du
+          bureau quand le financeur en est une seule ligne ('CD_93'), 'DEP_xx'
+          quand il regroupe la Caf et le CD d'un département.
+        tests:
+          - unique
+          - not_null
+      - name: ordre
+        description: >
+          Ordre d'affichage : la Seine-Saint-Denis en tête, puis les territoires
+          par numéro de département croissant.
+        tests:
+          - unique
+          - not_null
+      - name: financeur
+        description: Libellé affiché, tel que le métier l'écrit.
+        tests:
+          - unique
+          - not_null
+      - name: regle_departement
+        description: >
+          Filtre « Département de la source » du dashboard Mécènes et
+          Partenaires qui redonne les enfants du financeur. Vide quand la règle
+          ne passe pas par le département. Documentation seulement : la règle
+          exécutée est le case de suivi_financeurs_enfant.
+      - name: regle_canal
+        description: >
+          Filtre « Canal d'inscription » : 'PMI', ou 'Tous' quand le financeur
+          prend tous les canaux du département. Vide pour une règle par source.
+      - name: regle_source
+        description: >
+          Filtre « Source précise » : la ou les sources nommées, séparées par
+          « · ». Vide pour une règle par département.
+      - name: methode_de_calcul
+        description: >
+          Les trois filtres en une phrase, pour un document ou un export.
+      - name: codes_feuille
+        description: >
+          Tableau des project_code de stg_projects__engagements dont le
+          financeur reprend l'engagement et la projection. Deux codes pour
+          l'Aube, l'Oise et le Puy-de-Dôme : leurs engagements s'additionnent.

@@ -64,6 +64,78 @@ models:
           Comment entrees_attendues a été estimé : saisonnalite_projet,
           saisonnalite_globale, aucune_entree (rien à extrapoler), annee_close.
 
+  - name: engagements_par_financeur
+    description: >
+      Le tableau du dashboard « Suivi de projet v2 » : une ligne par financeur
+      du référentiel dim.financeur et par année. Statut et engagement
+      viennent de la feuille du bureau ; les enfants inscrits, de
+      l'application ; la projection est calculée. La mesure opposée à l'engagement est le nombre d'enfants
+      inscrits sur l'année, et non plus les entrées en cohorte de
+      engagements_par_projet. Agrège analytics.engagements_enfants_par_financeur
+      et rien d'autre. Aucune année n'est filtrée.
+    columns:
+      - name: statut
+        description: >
+          Saisi dans la feuille du bureau, colonne « Statut ». null tant que la
+          colonne n'existe pas dans la feuille ; s'affiche de lui-même dès
+          qu'elle y est.
+      - name: engagement_partenaire
+        description: >
+          Nombre d'enfants que le partenaire s'est engagé à inscrire sur
+          l'année, saisi dans la feuille. Somme de deux lignes pour l'Aube,
+          l'Oise et le Puy-de-Dôme (voir lignes_feuille). null pour les années
+          que la feuille ne porte pas.
+      - name: projection
+        description: >
+          Enfants inscrits attendus au 31 décembre : les inscrits à ce jour,
+          prolongés au rythme des 56 derniers jours. Calculée, plus lue dans la
+          feuille. Fiable à l'automne (2 à 10 % d'écart rejouée un 10 novembre
+          sur 2023-2025), pas avant l'été. Vide avant le 28 janvier ; égale au
+          réalisé pour une année close.
+      - name: projection_feuille
+        description: >
+          La projection saisie par le bureau dans la feuille, conservée pour
+          comparaison. N'est plus affichée.
+      - name: enfants_inscrits
+        description: >
+          Enfants ajoutés à la base dans l'année (date de création), qu'ils
+          soient ou non entrés en cohorte ; statut différent de not_supported,
+          hors cohortes exclues et sources de test. Redonne les comptes du dashboard
+          Mécènes et Partenaires filtré sur la règle du financeur.
+      - name: places_restantes
+        description: >
+          engagement_partenaire - enfants_inscrits, plancher à zéro. Se somme
+          entre financeurs : c'est le nombre d'enfants encore à inscrire pour
+          tenir tous les engagements, sans compenser un retard par le
+          dépassement d'un autre.
+      - name: pct_atteinte
+        description: >
+          enfants_inscrits / engagement_partenaire, en pourcentage entier.
+          null sans engagement. À ne pas calculer sur le total : le dépassement
+          d'un financeur n'y compense pas le retard d'un autre.
+      - name: enfants_inscrits_ou_accompagnes
+        description: >
+          enfants_entres_en_cohorte + enfants_reportes, la somme demandée par
+          le métier. Le dashboard Mécènes et Partenaires y ajoute les inscrits
+          dont la cohorte n'a pas démarré.
+      - name: ordre
+        description: Ordre d'affichage du référentiel. Trier dessus.
+
+  - name: engagements_enfants_par_financeur
+    description: >
+      Le détail du même dashboard : une ligne par enfant et par année, pour les
+      seuls financeurs du référentiel. Le périmètre est posé ici une fois —
+      hors sources de test, hors cohortes exclues, hors bouche-à-oreille — de
+      sorte qu'une carte de détail ne puisse pas contredire l'agrégat. Toujours
+      filtrer sur annee : un enfant apparaît sur plusieurs années.
+    columns:
+      - name: compte_comme_inscrit
+        description: L'enfant compte dans enfants_inscrits de l'année.
+      - name: est_entre_en_cohorte
+        description: Sa cohorte a démarré dans l'année.
+      - name: est_reporte
+        description: Son accompagnement était en cours au 1er janvier.
+
   - name: engagements_par_categorie
     description: >
       Ventilation d'une année d'engagement entre les millésimes : une ligne par
