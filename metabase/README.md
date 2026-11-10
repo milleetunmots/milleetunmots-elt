@@ -142,6 +142,7 @@ clause que Metabase générerait.
 | `accompagnantes.yml` | `Claude/Accompagnantes` | [119](https://metabase.1001mots.org/dashboard/119) | Les accompagnantes : le programme, et chacune face au collectif |
 | `fidelity.yml` | `Claude/Suivi Fidelity` | [118](https://metabase.1001mots.org/dashboard/118) | Suivi des engagements du contrat Fidelity |
 | `suivi_projet.yml` | `Claude/Suivi de projet` | [120](https://metabase.1001mots.org/dashboard/120) | Où en est chaque financeur de ce qu'il a contractualisé |
+| `suivi_projet_v2.yml` | `Claude/Suivi de projet v2` | [124](https://metabase.1001mots.org/dashboard/124) | Le même après les retours du métier : enfants inscrits face à l'engagement partenaire, financeurs et règles du métier. Remplacera le 120 |
 | `sources_a_relancer.yml` | `Claude/Sources a relancer` | [122](https://metabase.1001mots.org/dashboard/122) | Les sources d'inscription inactives ou en baisse, et à qui écrire |
 
 Les deux sont en spec : un renommage de colonne dans dbt se rattrape maintenant

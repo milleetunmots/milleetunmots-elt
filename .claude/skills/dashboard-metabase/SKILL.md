@@ -87,6 +87,23 @@ nomme les colonnes à tracer : renommer un alias SQL sans renommer la série fai
 disparaître la courbe, sans erreur ni message. Le contrôle tient en deux lignes
 — comparer `graph.metrics` aux colonnes rendues — et il a déjà attrapé le cas.
 
+**La mini-barre d'un tableau (`show_mini_bar`) se cale sur le maximum de la
+colonne, sans réglage d'échelle** (vérifié en v0.64). Sur un pourcentage
+d'atteinte, un financeur à 242 % laisse à moitié vide la barre d'un financeur à
+105 %. Plafonner la colonne ne suffit pas : le filtre peut ne garder que des
+lignes sous 100. Ne pas la remplacer par une jauge en caractères (`█░`) :
+essayée, jugée laide, et c'est une colonne de plus qui fait défiler le tableau.
+Ce qui a une échelle fixe, c'est la mise en forme conditionnelle
+(`table.column_formatting`, `min_type: custom` / `max_type: custom`) : un code
+couleur rouge / vert sur la colonne du pourcentage, comme dans
+`suivi_projet_v2.yml`. Deux dégradés sur la même colonne cessent de colorer
+hors de leurs bornes — ajouter une règle `single` pour l'au-delà.
+
+**Sobriété des titres.** Un titre de section tient en quelques mots, sans
+sous-titre après un tiret (un titre long passe à la ligne et se fait rogner) ;
+un titre de tuile reste sous 35 caractères, au-delà Metabase le tronque.
+L'explication va dans la description de la carte.
+
 **Les vues `analytics.*` sont lisibles ET filtrables depuis le 2026-10-20**
 (grant Snowflake + future grant, puis synchronisation du catalogue Metabase).
 Toujours pointer les questions dessus plutôt que de recopier en SQL une logique
@@ -145,4 +162,5 @@ correspondre à personne.
 | `accompagnantes.yml` | `Claude/Accompagnantes` | [119](https://metabase.1001mots.org/dashboard/119) |
 | `fidelity.yml` | `Claude/Suivi Fidelity` | [118](https://metabase.1001mots.org/dashboard/118) |
 | `suivi_projet.yml` | `Claude/Suivi de projet` | [120](https://metabase.1001mots.org/dashboard/120) |
+| `suivi_projet_v2.yml` | `Claude/Suivi de projet v2` | [124](https://metabase.1001mots.org/dashboard/124) |
 | `sources_a_relancer.yml` | `Claude/Sources a relancer` | [122](https://metabase.1001mots.org/dashboard/122) |

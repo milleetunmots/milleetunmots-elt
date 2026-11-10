@@ -1,0 +1,686 @@
+# Suivi de projet v2 : ou en est chaque partenaire de ce qu'il s'est engage a
+# inscrire. Duplique de suivi_projet.yml le 2026-11-10 pour integrer les retours
+# du metier ; le premier dashboard (120) reste en place, inchange, le temps de
+# comparer. Quand celui-ci l'aura remplace, archiver l'autre et sa spec.
+#
+# OU VIVENT LES REGLES. Pas ici. Trois modeles dbt, a lire dans cet ordre :
+#   dim.financeur                    la liste des financeurs affiches, leur
+#                                    libelle, leur ordre. Une ligne = une ligne
+#                                    du tableau.
+#   fact.suivi_financeurs_enfant     quel enfant pour quel financeur, et ce
+#                                    qu'est un « inscrit sur l'annee ».
+#   analytics.engagements_par_financeur            l'agregat que lisent les cartes
+#   analytics.engagements_enfants_par_financeur    son detail, meme perimetre
+# Cette spec ne fait que choisir quoi montrer et dans quel ordre.
+#
+# CE QUI CHANGE PAR RAPPORT AU PREMIER DASHBOARD, et pourquoi (retours du
+# metier, 2026-11-10) :
+#
+# 1. LA MESURE FACE A L'ENGAGEMENT EST LE NOMBRE D'ENFANTS INSCRITS SUR
+#    L'ANNEE, plus les entrees en cohorte. L'engagement est un nombre d'enfants
+#    a inscrire ; un enfant inscrit en decembre et entre en cohorte en janvier
+#    comptait jusqu'ici pour la mauvaise annee. Les entrees et les reports
+#    gardent leur section, plus bas.
+#
+# 2. « QUOTA VENDU » S'APPELLE « ENGAGEMENT PARTENAIRE ». Meme colonne de la
+#    feuille du bureau, autre nom.
+#
+# 3. LES FINANCEURS SONT CEUX DU METIER, DANS SON ORDRE : 24 lignes plus
+#    « Autres », Seine-Saint-Denis en tete puis par departement croissant. Caf
+#    et CD sont regroupes pour l'Aube, l'Oise et le Puy-de-Dome. Les lignes de
+#    la feuille qui n'inscrivent pas (ARS 10, ARS 63, anciens partenaires) ne
+#    sont pas affichees : pour en afficher ou en retirer une, c'est
+#    dim.financeur.
+#
+# 4. UN TAUX D'ATTEINTE EST AFFICHE, par financeur, a la demande du metier. Le
+#    premier dashboard s'y refusait (« deux nombres, pas un jugement »). Il
+#    reste absent des tuiles, et ce n'est pas un oubli : sur le total, le
+#    depassement d'un financeur masquerait le retard des autres -- 5 928
+#    inscrits pour 6 920 engages donnent 86 %, alors que la Caf 93 depasse a
+#    elle seule son engagement de 849 enfants. La tuile « Places restantes »
+#    dit la meme chose sans ce biais : elle somme les manques financeur par
+#    financeur, 1 900 enfants, et non les 992 de la soustraction des totaux.
+#
+# 5. UN INSCRIT EST UN ENFANT AJOUTE A LA BASE DANS L'ANNEE, qu'il soit ou non
+#    entre en cohorte (definition rappelee par le metier, 2026-11-10). C'est
+#    une definition, pas une demande de carte : ne pas isoler les « inscrits
+#    sans cohorte » dans une tuile, cela a ete tente par quiproquo et retire
+#    aussitot. La tuile « Inscrits ou accompagnes » reste la somme des entres
+#    et des reportes, comme demandee.
+#
+# LES CHIFFRES RETOMBENT SUR LE DASHBOARD MECENES ET PARTENAIRES. Les regles du
+# metier sont les filtres de ce dashboard (« Departement de la source »,
+# « Canal d'inscription », « Source precise »). Controle du 2026-11-10 : chaque
+# ligne du tableau redonne le compte de fact.mecene filtre de la meme facon,
+# sauf le CD 92 (352 contre 358), parce qu'ici un enfant n'a qu'un financeur.
+# Detail dans l'en-tete de fact.suivi_financeurs_enfant.
+#
+# LA PROJECTION EST CALCULEE, plus lue dans la feuille (demande du metier,
+# 2026-11-10, « au moins pour l'instant ») : inscrits a ce jour prolonges au
+# rythme des 56 derniers jours. Methode, test sur les annees passees et limites
+# dans l'en-tete de analytics.engagements_par_financeur ; la valeur du bureau
+# y reste sous projection_feuille.
+#
+# LE STATUT VIENT DE LA FEUILLE DU BUREAU, qui ne le porte pas encore. La
+# colonne est vide jusqu'au jour ou la feuille aura une colonne « Statut » ;
+# elle se remplit alors seule, sans toucher ni a dbt ni a cette spec.
+#
+# L'ANNEE N'EST PAS CODEE EN DUR ET N'A PAS DE FILTRE, comme dans le premier
+# dashboard et pour les memes raisons : chaque carte lit la derniere annee pour
+# laquelle la feuille porte un engagement, et un filtre annee laisse sans
+# selection sommerait des annees ou le meme enfant est une entree puis un
+# report.
+#
+# LE FILTRE FINANCEUR N'A QU'UNE COLONNE, celle de l'agregat : les cartes qui
+# lisent le detail la rejoignent par une jointure. Sa liste de valeurs est donc
+# exactement celle du tableau, et il sert a la fois a regarder un financeur et
+# a en ecarter -- on coche ceux qu'on veut voir.
+#
+# TROIS ONGLETS. « Par financeur » repond a « ou en est-on », « Detail des
+# enfants » a « de qui parle-t-on », « Methode de calcul » a « comment est-ce
+# compte » -- quatre definitions, puis la regle de chaque financeur, un filtre
+# du dashboard Mecenes par colonne. Le premier onglet ne porte que des
+# chiffres : l'ancien bloc « Comment lire ces chiffres » en a ete retire, son
+# contenu est dans les descriptions des cartes.
+#
+# SOBRIETE (retours du 2026-11-10). Les titres de section tiennent en quelques
+# mots, sans sous-titre apres un tiret : l'explication va dans la description
+# de la carte. Les titres de tuile restent sous 25 caracteres, au-dela
+# Metabase les tronque. Dans un tableau, un code couleur rouge / vert plutot
+# qu'une jauge.
+
+name: Suivi de projet v2 — engagements partenaires
+description: >
+  Où en est chaque partenaire de ce qu'il s'est engagé à inscrire. L'engagement
+  et le statut viennent de la feuille du bureau, le reste de l'application. La mesure qu'on leur oppose est le nombre d'enfants inscrits
+  sur l'année. Les financeurs et leurs règles de calcul sont ceux du métier,
+  détaillés dans l'onglet « Méthode de calcul ».
+  Spec : metabase/dashboards/suivi_projet_v2.yml
+
+collection: Claude/Suivi de projet v2
+database: snowflake_dw
+
+tabs:
+  - Par financeur
+  - Detail des enfants
+  - Methode de calcul
+
+filters:
+  - slug: financeur
+    display_name: Financeur
+    type: string/=
+    dimension: ANALYTICS.ENGAGEMENTS_PAR_FINANCEUR.FINANCEUR
+
+cards:
+
+  # ------------------------------------------------------------ l'annee en cours
+
+  - name: Titre constat
+    tab: Par financeur
+    display: heading
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: L'année en cours
+
+  - name: Projet v2 · Engagement partenaire
+    tab: Par financeur
+    display: scalar
+    row: 1
+    col: 0
+    size_x: 8
+    size_y: 3
+    filters: [financeur]
+    description: >
+      Nombre d'enfants que les partenaires se sont engagés à inscrire sur
+      l'année en cours, saisi dans la feuille du bureau. C'est le total de la
+      colonne Engagement du tableau ci-dessous.
+    visualization:
+      scalar.field: Engagement partenaire
+      card.title: Engagement partenaire
+    sql: |
+      select sum(engagement_partenaire) as "Engagement partenaire"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+
+  - name: Projet v2 · Enfants inscrits sur l'annee
+    tab: Par financeur
+    display: scalar
+    row: 1
+    col: 8
+    size_x: 8
+    size_y: 3
+    filters: [financeur]
+    description: >
+      Enfants inscrits depuis le 1er janvier par les financeurs du tableau,
+      comptés une fois chacun. C'est la mesure qui se compare à l'engagement.
+      Même définition que le dashboard Mécènes et Partenaires : enfant créé dans
+      l'année, hors enfants non accompagnés (statut not_supported), hors
+      cohortes exclues des analyses.
+      À ne pas confondre avec les enfants entrés en cohorte, plus bas : un
+      enfant inscrit en décembre et entré en cohorte en janvier est un inscrit
+      de l'année précédente et une entrée de celle-ci.
+    visualization:
+      scalar.field: Enfants inscrits sur l'année
+      card.title: Enfants inscrits sur l'année
+    sql: |
+      select sum(enfants_inscrits) as "Enfants inscrits sur l'année"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+
+  - name: Projet v2 · Places restantes
+    tab: Par financeur
+    display: scalar
+    row: 1
+    col: 16
+    size_x: 8
+    size_y: 3
+    filters: [financeur]
+    description: >
+      Enfants encore à inscrire pour que chaque partenaire tienne son
+      engagement : la somme de la colonne Places restantes du tableau.
+      Ce n'est pas l'engagement moins les inscrits. Un financeur qui a dépassé
+      son engagement compte pour zéro, il ne compense pas le retard d'un autre :
+      c'est pourquoi ce nombre est plus élevé que la soustraction des deux
+      tuiles voisines.
+    visualization:
+      scalar.field: Places restantes
+      card.title: Places restantes
+    sql: |
+      select sum(places_restantes) as "Places restantes"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+
+  # ------------------------------------------------------------------ le tableau
+
+  - name: Titre financeurs
+    tab: Par financeur
+    display: heading
+    row: 4
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Par financeur
+
+  - name: Projet v2 · Le detail par financeur
+    tab: Par financeur
+    display: table
+    row: 5
+    col: 0
+    size_x: 24
+    size_y: 20
+    filters: [financeur]
+    description: >
+      Une ligne par financeur, la Seine-Saint-Denis en tête puis par numéro de
+      département. Statut et Engagement se saisissent dans la feuille du
+      bureau et se corrigent là-bas ; les autres colonnes sont calculées.
+      Projection : les inscrits à ce jour, prolongés jusqu'au 31 décembre au
+      rythme des huit dernières semaines. Repère fiable à l'automne ; à lire
+      avec prudence pour les Caf, dont les inscriptions arrivent par vagues de
+      courriers — une vague récente est prolongée comme si elle continuait.
+      Enfants inscrits : inscrits depuis le 1er janvier, selon la règle du
+      financeur (onglet Méthode de calcul). Places restantes : engagement moins
+      inscrits, zéro une fois l'engagement tenu. % d'atteinte : inscrits
+      rapportés à l'engagement, au-delà de 100 quand il est dépassé.
+      Code couleur : rouge sous la moitié de l'engagement, vert au-delà, de
+      plus en plus soutenu à mesure qu'on s'éloigne de 50 % ; vert plein dès
+      que l'engagement est tenu.
+      La colonne Statut reste vide tant que la feuille n'a pas de colonne
+      « Statut ».
+      Pour n'afficher que certains financeurs, les cocher dans le filtre
+      Financeur en haut de page.
+    # LE POURCENTAGE PORTE UN CODE COULEUR ROUGE / VERT, PAS UNE JAUGE. La
+    # mini-barre de Metabase se cale sur le maximum de la colonne et n'a pas de
+    # reglage d'echelle : avec la Caf 93 a 242 %, un financeur a 105 % avait une
+    # barre a moitie vide. Une jauge dessinee en caracteres, puis une teinte
+    # bleue, ont ete essayees et retirees le meme jour (retours du 2026-11-10).
+    # La mise en forme conditionnelle accepte des bornes fixes, donc
+    # independantes du filtre. Trois regles, dans cet ordre :
+    #   >= 100          vert plein -- l'engagement est tenu, depasse ou non
+    #   de 50 a 100     vert de plus en plus soutenu
+    #   de 0 a 50       rouge de plus en plus soutenu vers 0
+    # Deux degrades d'une seule teinte chacun plutot qu'un degrade rouge-vert :
+    # celui-ci passe par un brun au milieu. Des qu'une colonne porte deux
+    # degrades, Metabase ne colore plus hors de leurs bornes : c'est pourquoi le
+    # vert plein au-dela de 100 est une regle a part, et qu'elle passe en tete.
+    visualization:
+      card.title: Le détail par financeur
+      table.pivot: false
+      column_settings:
+        '["name","% d''atteinte de l''objectif"]':
+          suffix: " %"
+      table.column_formatting:
+        - columns: ["% d'atteinte de l'objectif"]
+          type: single
+          operator: ">="
+          value: 100
+          color: "#88BF4D"
+          highlight_row: false
+        - columns: ["% d'atteinte de l'objectif"]
+          type: range
+          colors: ["rgba(136, 191, 77, 0)", "rgba(136, 191, 77, 0.65)"]
+          min_type: custom
+          min_value: 50
+          max_type: custom
+          max_value: 100
+        - columns: ["% d'atteinte de l'objectif"]
+          type: range
+          colors: ["rgba(237, 110, 110, 0.65)", "rgba(237, 110, 110, 0)"]
+          min_type: custom
+          min_value: 0
+          max_type: custom
+          max_value: 50
+    sql: |
+      select
+          financeur                 as "Financeur",
+          statut                    as "Statut",
+          engagement_partenaire     as "Engagement",
+          projection                as "Projection",
+          enfants_inscrits          as "Enfants inscrits",
+          places_restantes          as "Places restantes",
+          pct_atteinte              as "% d'atteinte de l'objectif"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+      order by ordre
+
+  - name: Projet v2 · Inscrits face a l'engagement, par financeur
+    tab: Par financeur
+    display: bar
+    row: 25
+    col: 0
+    size_x: 24
+    size_y: 7
+    filters: [financeur]
+    description: >
+      Pour chaque financeur, dans l'ordre du tableau : ce à quoi il s'est
+      engagé, et les enfants inscrits depuis le 1er janvier. Deux barres côte à
+      côte, à lire par paire — une barre verte plus haute que la bleue est un
+      engagement dépassé.
+      Les libellés sont abrégés pour tenir sur l'axe ; le tableau porte les
+      noms complets et les chiffres exacts.
+    visualization:
+      card.title: Enfants inscrits face à l'engagement, par financeur
+      graph.dimensions: [Financeur]
+      graph.metrics: [Engagement partenaire, Enfants inscrits sur l'année]
+      graph.y_axis.title_text: enfants
+      graph.x_axis.title_text: ""
+      series_settings:
+        Engagement partenaire:
+          color: "#509EE3"
+        Enfants inscrits sur l'année:
+          color: "#88BF4D"
+    sql: |
+      select
+          financeur_court           as "Financeur",
+          engagement_partenaire     as "Engagement partenaire",
+          enfants_inscrits          as "Enfants inscrits sur l'année"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+      order by ordre
+
+  # ------------------------------------------------------- les enfants en cohorte
+
+  - name: Titre cohortes
+    tab: Par financeur
+    display: heading
+    row: 32
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Les enfants en cohorte cette année
+
+  # Les noms de carte gardent les libelles longs du metier (c'est par eux que
+  # l'outil reconnait la carte) ; les titres affiches sont plus courts pour
+  # ne pas etre tronques.
+
+  - name: Projet v2 · Enfants entres en cohorte
+    tab: Par financeur
+    display: scalar
+    row: 33
+    col: 0
+    size_x: 8
+    size_y: 3
+    filters: [financeur]
+    description: >
+      Enfants dont la cohorte démarre dans l'année, cohortes déjà planifiées
+      d'ici décembre comprises. Ce n'est pas le nombre d'inscrits : un enfant
+      ajouté à la base fin d'année dernière et entré en cohorte en janvier est
+      compté ici, pas dans les inscrits de l'année.
+    visualization:
+      scalar.field: Enfants entrés en cohorte
+      card.title: Enfants entrés en cohorte
+    sql: |
+      select sum(enfants_entres_en_cohorte) as "Enfants entrés en cohorte"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+
+  - name: Projet v2 · Enfants reportes de l'annee precedente
+    tab: Par financeur
+    display: scalar
+    row: 33
+    col: 8
+    size_x: 8
+    size_y: 3
+    filters: [financeur]
+    description: >
+      Enfants dont l'accompagnement était déjà en cours au 1er janvier et se
+      poursuit dans l'année.
+      Sous « Autres petits partenaires » se trouvent aussi les reports des
+      anciens financeurs que le tableau ne liste plus (CD 69, CD 78).
+    visualization:
+      scalar.field: Reportés de l'année précédente
+      card.title: Reportés de l'année précédente
+    sql: |
+      select sum(enfants_reportes) as "Reportés de l'année précédente"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+
+  - name: Projet v2 · Enfants inscrits ou accompagnes cette annee
+    tab: Par financeur
+    display: scalar
+    row: 33
+    col: 16
+    size_x: 8
+    size_y: 3
+    filters: [financeur]
+    description: >
+      La somme des deux tuiles voisines : les enfants entrés en cohorte dans
+      l'année plus ceux reportés de l'année précédente.
+      Le dashboard Mécènes et Partenaires porte une tuile du même nom qui
+      ajoute les enfants inscrits dont la cohorte n'a pas encore démarré : elle
+      est donc un peu plus haute que celle-ci.
+    visualization:
+      scalar.field: Inscrits ou accompagnés cette année
+      card.title: Inscrits ou accompagnés cette année
+    sql: |
+      select sum(enfants_inscrits_ou_accompagnes) as "Inscrits ou accompagnés cette année"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+
+  # ---------------------------------------------------------------- mois par mois
+
+  - name: Titre mois
+    tab: Par financeur
+    display: heading
+    row: 36
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Mois par mois
+
+  - name: Projet v2 · Inscrits cumules, reports et avancement de l'annee
+    tab: Par financeur
+    display: combo
+    filters: [financeur]
+    row: 37
+    col: 0
+    size_x: 24
+    size_y: 7
+    description: >
+      Les douze mois de l'année en cours, en cumul. Chaque barre empile les
+      enfants inscrits depuis le 1er janvier et les reportés de l'année
+      précédente, constants puisqu'ils sont tous là dès janvier. La barre du
+      mois en cours retombe sur les tuiles ; les mois à venir sont vides.
+      La ligne pointillée est l'engagement au prorata de l'année écoulée à la
+      fin de chaque mois, jusqu'à l'engagement entier en décembre. Elle se
+      compare aux seuls inscrits, le bas de la pile : un report a déjà été
+      compté l'année de son arrivée. Pour le mois en cours, la barre s'arrête
+      à aujourd'hui alors que la ligne vise la fin du mois : l'écart y est
+      toujours exagéré.
+      Repère de rythme linéaire, pas un objectif mensuel : les inscriptions
+      arrivent par vagues, et un mois creux fait mécaniquement décrocher la
+      barre de la ligne.
+    visualization:
+      card.title: Inscrits cumulés et reports, face à l'engagement au prorata de l'année
+      graph.dimensions: [Mois]
+      graph.metrics: [Inscrits depuis le 1er janvier, Reportés de l'an passé, Engagement au prorata de l'année]
+      stackable.stack_type: stacked
+      graph.y_axis.title_text: enfants, en cumul
+      graph.x_axis.title_text: ""
+      series_settings:
+        Inscrits depuis le 1er janvier:
+          display: bar
+          color: "#88BF4D"
+        Reportés de l'an passé:
+          display: bar
+          color: "#F2A86F"
+        Engagement au prorata de l'année:
+          display: line
+          color: "#509EE3"
+          line.style: dotted
+          line.marker_enabled: true
+    sql: |
+      with annee as (
+          select max(annee) as annee
+          from analytics.engagements_par_financeur
+          where engagement_partenaire is not null
+      ),
+      mois as (
+          select
+              dateadd('month', row_number() over (order by seq4()) - 1,
+                      date_from_parts(a.annee, 1, 1)) as mois
+          from table(generator(rowcount => 12))
+          cross join annee as a
+      ),
+      enfants as (
+          select
+              e.compte_comme_inscrit,
+              e.est_reporte,
+              e.date_inscription
+          from analytics.engagements_enfants_par_financeur as e
+          inner join analytics.engagements_par_financeur
+                  on engagements_par_financeur.financeur_code = e.financeur_code
+                 and engagements_par_financeur.annee          = e.annee
+          where e.annee = (select annee from annee)
+            and (e.compte_comme_inscrit or e.est_reporte)
+            [[and {{financeur}}]]
+      ),
+      engagement as (
+          select sum(engagement_partenaire) as engagement
+          from analytics.engagements_par_financeur
+          where annee = (select annee from annee)
+            [[and {{financeur}}]]
+      )
+      select
+          to_char(m.mois, 'YYYY-MM')                                    as "Mois",
+          iff(m.mois <= current_date,
+              count_if(e.compte_comme_inscrit
+                       and e.date_inscription <= last_day(m.mois)),
+              null)                                                     as "Inscrits depuis le 1er janvier",
+          iff(m.mois <= current_date,
+              count_if(e.est_reporte),
+              null)                                                     as "Reportés de l'an passé",
+          round(any_value(g.engagement)
+                * dayofyear(last_day(m.mois))
+                / dayofyear(date_from_parts(year(m.mois), 12, 31)))     as "Engagement au prorata de l'année"
+      from mois as m
+      cross join engagement as g
+      left join enfants as e
+             on true
+      group by m.mois
+      order by m.mois
+
+  # ------------------------------------------------------------------- historique
+
+  - name: Titre historique
+    tab: Par financeur
+    display: heading
+    row: 44
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Historique
+
+  - name: Projet v2 · Inscrits et reports par annee
+    tab: Par financeur
+    display: bar
+    filters: [financeur]
+    row: 45
+    col: 0
+    size_x: 24
+    size_y: 7
+    description: >
+      Enfants inscrits sur l'année et enfants reportés de l'année précédente,
+      année par année, pour les financeurs du tableau. Les règles de
+      rattachement d'aujourd'hui sont appliquées à toutes les années : les
+      anciens financeurs que le tableau ne liste plus se retrouvent sous
+      « Autres petits partenaires ».
+      Ne pas sommer les années : un enfant inscrit une année est souvent le
+      report de la suivante.
+    visualization:
+      card.title: Enfants inscrits sur l'année et enfants reportés de l'an passé
+      graph.dimensions: [Année]
+      graph.metrics: [Enfants inscrits sur l'année, Enfants reportés de l'an passé]
+      graph.y_axis.title_text: enfants
+      graph.x_axis.title_text: ""
+      series_settings:
+        Enfants inscrits sur l'année:
+          color: "#88BF4D"
+        Enfants reportés de l'an passé:
+          color: "#F2A86F"
+    sql: |
+      select
+          annee::varchar            as "Année",
+          sum(enfants_inscrits)     as "Enfants inscrits sur l'année",
+          sum(enfants_reportes)     as "Enfants reportés de l'an passé"
+      from analytics.engagements_par_financeur
+      where annee between 2022 and (select max(annee) from analytics.engagements_par_financeur
+                                    where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+      group by 1
+      order by 1
+
+  # ----------------------------------------------------------- detail des enfants
+
+  - name: Titre detail enfants
+    tab: Detail des enfants
+    display: heading
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: Choisir un financeur en haut de page pour voir ses enfants un par un
+
+  - name: Projet v2 · Detail des enfants du financeur
+    tab: Detail des enfants
+    display: table
+    row: 1
+    col: 0
+    size_x: 24
+    size_y: 14
+    filters: [financeur]
+    description: >
+      Une ligne par enfant rattaché au financeur sur l'année en cours, du plus
+      récemment inscrit au plus ancien. Même périmètre que l'onglet précédent :
+      le nombre de « oui » dans la colonne Inscrit sur l'année retombe sur la
+      colonne Enfants inscrits du tableau.
+      Sans financeur choisi, la liste est tronquée aux 2 000 premières lignes.
+    visualization:
+      card.title: Les enfants du financeur
+      table.pivot: false
+    sql: |
+      select
+          e.child_id                                as "Enfant",
+          e.financeur                               as "Financeur",
+          iff(e.compte_comme_inscrit, 'oui', 'non') as "Inscrit sur l'année",
+          e.date_inscription                        as "Date d'inscription",
+          e.rattachement                            as "Rattachement",
+          e.cohorte                                 as "Cohorte",
+          e.date_debut_accompagnement               as "Début d'accompagnement",
+          e.statut                                  as "Statut",
+          e.source                                  as "Source d'inscription",
+          e.canal                                   as "Canal",
+          e.departement_source                      as "Département de la source",
+          e.departement_famille                     as "Département de la famille",
+          e.tranche_age                             as "Tranche d'âge"
+      from analytics.engagements_enfants_par_financeur as e
+      inner join analytics.engagements_par_financeur
+              on engagements_par_financeur.financeur_code = e.financeur_code
+             and engagements_par_financeur.annee          = e.annee
+      where e.annee = (select max(annee) from analytics.engagements_par_financeur
+                       where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+      order by e.date_inscription desc nulls last, e.child_id
+
+  # ------------------------------------------------------------ methode de calcul
+
+  # Quatre lignes, pas plus : Guillaume ne veut pas de longs textes sur un
+  # dashboard. Hauteur de 4 : a 6, le bloc laissait un tiers de vide sous les
+  # puces (« un peu trop aere », 2026-11-10). Une ligne de grille fait ~39 px. Les exclusions et les cas particuliers sont dans les
+  # descriptions des cartes.
+  - name: Definitions
+    tab: Methode de calcul
+    display: text
+    row: 0
+    col: 0
+    size_x: 24
+    size_y: 4
+    text: |
+      ## Définitions
+
+      - **Inscrit sur l'année** : enfant ajouté à notre base dans l'année, qu'il soit ou non entré en cohorte.
+      - **Entré en cohorte** : enfant dont la cohorte démarre dans l'année.
+      - **Reporté** : enfant dont l'accompagnement était déjà en cours au 1er janvier.
+      - **Projection** : inscrits à ce jour, prolongés au rythme des huit dernières semaines jusqu'au 31 décembre.
+
+  - name: Titre methode
+    tab: Methode de calcul
+    display: heading
+    row: 4
+    col: 0
+    size_x: 24
+    size_y: 1
+    text: La règle de chaque financeur
+
+  - name: Projet v2 · Methode de calcul par financeur
+    tab: Methode de calcul
+    display: table
+    row: 5
+    col: 0
+    size_x: 24
+    size_y: 20
+    filters: [financeur]
+    description: >
+      Les filtres à poser dans le dashboard Mécènes et Partenaires pour
+      retrouver les enfants de chaque financeur. Une case vide est un filtre
+      qu'on ne touche pas ; « Tous » prend tous les canaux du département.
+      Le CD 92 ne reçoit par le département de la famille que les enfants sans
+      autre financeur de la liste. « Autres petits partenaires » est
+      provisoire : son périmètre reste à définir.
+      La dernière colonne dit de quelles lignes de la feuille du bureau viennent
+      l'engagement et le statut.
+    visualization:
+      card.title: Méthode de calcul par financeur
+      table.pivot: false
+      column_settings:
+        '["name","Source précise"]':
+          text_wrapping: true
+    sql: |
+      select
+          financeur                 as "Financeur",
+          regle_departement         as "Département de la source",
+          regle_canal               as "Canal d'inscription",
+          regle_source              as "Source précise",
+          lignes_feuille            as "Feuille du bureau"
+      from analytics.engagements_par_financeur
+      where annee = (select max(annee) from analytics.engagements_par_financeur
+                     where engagement_partenaire is not null)
+        [[and {{financeur}}]]
+      order by ordre
