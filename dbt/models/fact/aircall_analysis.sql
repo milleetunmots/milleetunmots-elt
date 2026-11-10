@@ -45,6 +45,11 @@ st as (
     from {{ ref('super_table') }}
 ),
 
+au as (
+    select *
+    from {{ ref('stg_1001mots_app__admin_users') }}
+),
+
 base as (
     select
         family_id,
@@ -163,7 +168,17 @@ group by 1,2,3,4,5,6
 )
 
 select
-    final.*,
+    final.* exclude (supporter_name),
+
+    -- Accompagnante : celle qui a passé (ou reçu) l'appel retenu, lue sur
+    -- aircall_calls.caller_id, et non celle à qui la fiche de suivi est
+    -- affectée aujourd'hui — elles diffèrent sur ~6 % des lignes (remplacement,
+    -- réaffectation après coup). Repli sur l'accompagnante de la fiche quand
+    -- l'appel n'est pas rattaché à un admin user.
+    coalesce(au.email, final.supporter_name) as supporter_name,
+    -- Affectation actuelle de la fiche (super_table.supporter_name).
+    final.supporter_name as fiche_supporter_name,
+
     ac.call_id,
     ac.date_started as date_call_started,
     ac.asset_url,
@@ -233,4 +248,6 @@ left join asup
     on ac.call_id = asup.call_id
 left join seg
     on ac.call_id = seg.id_appel
+left join au
+    on ac.caller_id = au.supporter_id
 qualify call_number = 1
